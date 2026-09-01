@@ -1,0 +1,407 @@
+<title>Metropolis Data Model</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Archivo:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap">
+
+<style>
+  /* Light palette is the base; both dark paths redefine only tokens.
+     Accent hues carry the district identity across themes. */
+  :root{
+    --bg:#f6f7fb;
+    --surface:#ffffff;
+    --surface-2:#eef0f7;
+    --line:#dde1ed;
+    --line-soft:#e8ebf3;
+    --ink:#141726;
+    --ink-2:#4a5169;
+    --ink-3:#767d95;
+    --amber:#b5601a;
+    --pitch:#1c7048;
+    --slate:#5a6480;
+    --cyan:#1a6f96;
+    --flag:#a8341f;
+    --code-bg:#eceff7;
+
+    --display:"Bricolage Grotesque","Trebuchet MS",system-ui,sans-serif;
+    --body:"Archivo","Helvetica Neue",Arial,sans-serif;
+    --mono:"JetBrains Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --bg:#0d1019;
+      --surface:#151928;
+      --surface-2:#1b2031;
+      --line:#293049;
+      --line-soft:#212739;
+      --ink:#e8eaf4;
+      --ink-2:#a8b0c9;
+      --ink-3:#757d99;
+      --amber:#ff9d4d;
+      --pitch:#4fd18b;
+      --slate:#98a1ba;
+      --cyan:#63c6f2;
+      --flag:#f0765c;
+      --code-bg:#1c2233;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0d1019;
+    --surface:#151928;
+    --surface-2:#1b2031;
+    --line:#293049;
+    --line-soft:#212739;
+    --ink:#e8eaf4;
+    --ink-2:#a8b0c9;
+    --ink-3:#757d99;
+    --amber:#ff9d4d;
+    --pitch:#4fd18b;
+    --slate:#98a1ba;
+    --cyan:#63c6f2;
+    --flag:#f0765c;
+    --code-bg:#1c2233;
+  }
+
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:var(--body);
+    font-size:15px;
+    line-height:1.62;
+    -webkit-font-smoothing:antialiased;
+  }
+  .page{max-width:860px;margin:0 auto;padding:38px 22px 72px}
+
+  /* ---- masthead ---- */
+  .mast{border-bottom:1px solid var(--line);padding-bottom:22px;margin-bottom:34px}
+  h1{
+    font-family:var(--display);
+    font-weight:700;
+    font-size:clamp(28px,5vw,38px);
+    line-height:1.08;
+    letter-spacing:-0.022em;
+    margin:0 0 10px;
+    text-wrap:balance;
+  }
+  .lede{color:var(--ink-2);font-size:16px;margin:0;max-width:64ch}
+  .meta{
+    margin-top:16px;
+    font-family:var(--mono);
+    font-size:11px;
+    letter-spacing:0.06em;
+    text-transform:uppercase;
+    color:var(--ink-3);
+    display:flex;flex-wrap:wrap;gap:5px 16px;
+  }
+
+  section{margin:0 0 40px}
+  h2{
+    font-family:var(--display);
+    font-size:20px;
+    font-weight:600;
+    letter-spacing:-0.012em;
+    margin:0 0 4px;
+    text-wrap:balance;
+  }
+  .sec-note{color:var(--ink-3);font-size:13.5px;margin:0 0 18px;max-width:62ch}
+  p{margin:0 0 13px;max-width:66ch}
+  strong{font-weight:600}
+
+  code{
+    font-family:var(--mono);
+    font-size:0.855em;
+    background:var(--code-bg);
+    padding:1.5px 5px;
+    border-radius:3px;
+    color:var(--ink);
+    word-break:break-word;
+  }
+
+  /* ---- entity trio ---- */
+  .ents{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:12px}
+  .ent{
+    background:var(--surface);
+    border:1px solid var(--line-soft);
+    border-radius:4px;
+    padding:14px 15px 15px;
+  }
+  .ent h3{
+    font-family:var(--mono);
+    font-size:11px;
+    letter-spacing:0.1em;
+    text-transform:uppercase;
+    color:var(--ink-3);
+    margin:0 0 7px;
+    font-weight:700;
+  }
+  .ent .key{
+    font-family:var(--display);
+    font-size:17px;
+    font-weight:600;
+    margin:0 0 6px;
+    letter-spacing:-0.01em;
+  }
+  .ent p{font-size:13.5px;color:var(--ink-2);margin:0}
+  .ent .id{
+    display:block;margin-top:9px;
+    font-family:var(--mono);font-size:11.5px;color:var(--ink-3);
+    border-top:1px dashed var(--line);padding-top:8px;
+  }
+
+  /* ---- tables ---- */
+  .scroll{overflow-x:auto;border:1px solid var(--line-soft);border-radius:4px;background:var(--surface)}
+  table{border-collapse:collapse;width:100%;font-size:13.5px;min-width:560px}
+  th,td{text-align:left;padding:9px 13px;border-bottom:1px solid var(--line-soft);vertical-align:top}
+  thead th{
+    font-family:var(--mono);
+    font-size:10.5px;
+    letter-spacing:0.09em;
+    text-transform:uppercase;
+    color:var(--ink-3);
+    font-weight:700;
+    background:var(--surface-2);
+    white-space:nowrap;
+  }
+  tbody tr:last-child td{border-bottom:none}
+  td.f{font-family:var(--mono);font-size:11.5px;color:var(--ink-2);white-space:nowrap}
+  td.v{color:var(--ink-2)}
+
+  .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:7px;vertical-align:1px;background:var(--c)}
+
+  /* ---- decisions ---- */
+  .call{
+    border-left:2px solid var(--line);
+    padding:0 0 0 16px;
+    margin:0 0 22px;
+  }
+  .call.locked{border-left-color:var(--pitch)}
+  .call.open{border-left-color:var(--flag)}
+  .call h3{
+    font-family:var(--display);
+    font-size:16.5px;font-weight:600;
+    margin:0 0 3px;letter-spacing:-0.008em;
+  }
+  .tag{
+    font-family:var(--mono);
+    font-size:9.5px;letter-spacing:0.1em;text-transform:uppercase;
+    padding:2px 6px;border-radius:2px;border:1px solid;
+    margin-bottom:6px;display:inline-block;font-weight:700;
+  }
+  .tag.locked{color:var(--pitch);border-color:var(--pitch)}
+  .tag.open{color:var(--flag);border-color:var(--flag)}
+  .call p{font-size:14px;margin:0 0 9px}
+  .call p:last-child{margin-bottom:0}
+  .why{color:var(--ink-3);font-size:13px}
+
+  ul{margin:0 0 13px;padding-left:19px;max-width:66ch}
+  li{margin-bottom:5px;color:var(--ink-2);font-size:14px}
+  li strong{color:var(--ink)}
+
+  .obs{
+    background:var(--surface-2);
+    border:1px solid var(--line-soft);
+    border-radius:4px;
+    padding:14px 16px;
+    font-size:13.5px;
+    color:var(--ink-2);
+  }
+  .obs h3{
+    font-family:var(--mono);font-size:10.5px;letter-spacing:0.1em;
+    text-transform:uppercase;color:var(--ink-3);margin:0 0 8px;font-weight:700;
+  }
+  .obs ul{margin:0;padding-left:18px}
+  .obs li{font-size:13.5px}
+</style>
+
+<div class="page">
+
+  <div class="mast">
+    <h1>Metropolis Data Model</h1>
+    <p class="lede">What a township is, what a cadet is, and exactly which field from the live session feed drives each thing you see on the plane.</p>
+    <div class="meta">
+      <span>locked against a live sample · 1 Sep 2026</span>
+      <span>10 sessions observed · has_more true</span>
+    </div>
+  </div>
+
+  <section>
+    <h2>Three entities</h2>
+    <p class="sec-note">Everything on the plane resolves to one of these. Nothing else is persisted.</p>
+    <div class="ents">
+      <div class="ent">
+        <h3>Persistent</h3>
+        <div class="key">Township</div>
+        <p>A project. Owns a hex cell, a theme, a skyline. Survives every session that touches it.</p>
+        <span class="id">key: owner/repo</span>
+      </div>
+      <div class="ent">
+        <h3>Ephemeral</h3>
+        <div class="key">Cadet</div>
+        <p>One live session, walking inside its township. Appears when a session becomes recent, leaves when it goes cold.</p>
+        <span class="id">key: session id</span>
+      </div>
+      <div class="ent">
+        <h3>Local only</h3>
+        <div class="key">Layout</div>
+        <p>Where each township sits. Yours, not the server's — never overwritten by a feed refresh.</p>
+        <span class="id">{ repoKey, q, r }</span>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Field mapping</h2>
+    <p class="sec-note">Left column is verbatim from the account session feed. Nothing here is assumed — every field was present in the live response.</p>
+    <div class="scroll">
+      <table>
+        <thead>
+          <tr><th>Feed field</th><th>Model</th><th>What it drives on the plane</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="f">session_context.sources[].git_repository.url</td>
+            <td class="v">Township key</td>
+            <td class="v">Which hex the session belongs to</td>
+          </tr>
+          <tr>
+            <td class="f">session_context.outcomes[].git_info.repo</td>
+            <td class="v">Township key (preferred)</td>
+            <td class="v">Where work actually lands — beats sources on conflict</td>
+          </tr>
+          <tr>
+            <td class="f">status_bucket = REVIEW_READY</td>
+            <td class="v">Cadet.needsYou</td>
+            <td class="v"><span class="dot" style="--c:var(--amber)"></span>Border pulses, cadet raises a bubble</td>
+          </tr>
+          <tr>
+            <td class="f">session_status = RUNNING</td>
+            <td class="v">Cadet.working</td>
+            <td class="v"><span class="dot" style="--c:var(--pitch)"></span>Windows lit, cadet in motion</td>
+          </tr>
+          <tr>
+            <td class="f">session_status = IDLE</td>
+            <td class="v">Cadet.resting</td>
+            <td class="v">Cadet stands still, lights dim</td>
+          </tr>
+          <tr>
+            <td class="f">connection_status = disconnected</td>
+            <td class="v">Cadet.away</td>
+            <td class="v">Cadet greyed out, not removed</td>
+          </tr>
+          <tr>
+            <td class="f">external_metadata.last_init_error.error_kind</td>
+            <td class="v">Township.unreachable</td>
+            <td class="v"><span class="dot" style="--c:var(--slate)"></span>District goes dark — your machine is asleep</td>
+          </tr>
+          <tr>
+            <td class="f">unread</td>
+            <td class="v">Cadet.unseen</td>
+            <td class="v">Bubble stays up until you open the session</td>
+          </tr>
+          <tr>
+            <td class="f">external_metadata.usage.cost_usd</td>
+            <td class="v">Township.invested (summed)</td>
+            <td class="v">Skyline mass — how built-up the district is</td>
+          </tr>
+          <tr>
+            <td class="f">updated_at</td>
+            <td class="v">Cadet.lastSeen</td>
+            <td class="v">Whether a cadet spawns at all; district decay</td>
+          </tr>
+          <tr>
+            <td class="f">title</td>
+            <td class="v">Cadet.label</td>
+            <td class="v">Text in the speech bubble on tap</td>
+          </tr>
+          <tr>
+            <td class="f">origin</td>
+            <td class="v">Cadet.surface</td>
+            <td class="v">Badge: phone, terminal, cloud</td>
+          </tr>
+          <tr>
+            <td class="f">external_metadata.artifacts[]</td>
+            <td class="v">Township.outputs</td>
+            <td class="v">Billboards — published pages, tappable</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>Calls I made</h2>
+    <p class="sec-note">Four places the data was genuinely ambiguous. These are now locked; changing one later means touching the renderer.</p>
+
+    <div class="call locked">
+      <span class="tag locked">Locked</span>
+      <h3>A session belongs to exactly one township</h3>
+      <p>Sessions can carry several repos — this one carries two. Resolution order: first <code>outcomes[]</code> repo, else first <code>sources[]</code> repo, else the <code>cwd</code> basename from the local feed.</p>
+      <p class="why">Why: outcomes is where commits land, which is the project being built. Letting one cadet stand in two townships doubles every count and makes the skyline lie.</p>
+    </div>
+
+    <div class="call locked">
+      <span class="tag locked">Locked</span>
+      <h3>Repo-less sessions get a Commons district</h3>
+      <p>An unthemed hex adjacent to the cluster, holding every session with no repo attached. Cadets there behave normally and can be dragged out once a repo appears.</p>
+      <p class="why">Why: this is not an edge case. In the live sample, <strong>9 of 10 sessions had no repo field at all</strong> — only the cloud session carried one. Without a Commons, most of your work is invisible.</p>
+    </div>
+
+    <div class="call locked">
+      <span class="tag locked">Locked</span>
+      <h3>Skyline mass is spend, not commits</h3>
+      <p>Sum <code>usage.cost_usd</code> across all sessions for a repo. Buildings are added at thresholds, never removed.</p>
+      <p class="why">Why: it is already in the feed. Commit counts need a second API and a token, and they undercount design work that produced no diff.</p>
+    </div>
+
+    <div class="call locked">
+      <span class="tag locked">Locked</span>
+      <h3>Cadets expire, townships do not</h3>
+      <p>A cadet exists if the session is RUNNING or REVIEW_READY, or its <code>updated_at</code> is inside 24 hours. Everything older is history, not population.</p>
+      <p class="why">Why: you opened ten sessions in three days. Without expiry the districts fill with statues within a week.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>Open questions</h2>
+    <p class="sec-note">Two things I could not settle from the data alone. Both block backend work, neither blocks the renderer.</p>
+
+    <div class="call open">
+      <span class="tag open">Unresolved</span>
+      <h3>The two feeds use different session IDs</h3>
+      <p>The account feed returns <code>session_01H8krB7iQ…</code>. The local <code>claude agents --json</code> returns a plain UUID for the same session. I have no evidence they can be joined.</p>
+      <p class="why">Impact: until this is settled, the two feeds cannot be merged, so v1 uses the account feed alone. Local hooks stay a later enrichment, not a dependency.</p>
+    </div>
+
+    <div class="call open">
+      <span class="tag open">Unverified</span>
+      <h3>How your own app reads the feed</h3>
+      <p>I reached this list through an MCP server available inside a Claude Code session. Whether a standalone app can call the same endpoint is unconfirmed.</p>
+      <p class="why">Fallback that definitely works: the backend is itself a headless Claude Code or Agent SDK process with that MCP server attached. Worth checking the docs before any backend code is written.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>What the feed will not give you</h2>
+    <ul>
+      <li><strong>Push.</strong> There is no event stream — you poll. Pick an interval and accept the latency.</li>
+      <li><strong>The question being asked.</strong> <code>REVIEW_READY</code> says a session wants you; it does not carry the prompt text. The bubble shows <code>title</code> until you open it.</li>
+      <li><strong>A reply path.</strong> Nothing here writes back. Tapping <em>Reply</em> has to open the session, not answer it in place.</li>
+      <li><strong>Complete history.</strong> The response paginates — <code>has_more</code> was true on the first page of ten.</li>
+    </ul>
+  </section>
+
+  <section>
+    <div class="obs">
+      <h3>Live sample this was locked against</h3>
+      <ul>
+        <li>10 sessions returned, <code>has_more: true</code></li>
+        <li>1 carried repo sources — the cloud session; the other 9 carried none</li>
+        <li>9 were <code>origin: claude_code_cli</code> on a bridge environment, all disconnected with <code>error_kind: computer_unreachable</code></li>
+        <li>Status buckets seen: <code>WORKING</code> and <code>REVIEW_READY</code> only</li>
+        <li>Surfaces seen: <code>ios</code> and <code>claude_code_cli</code></li>
+      </ul>
+    </div>
+  </section>
+
+</div>

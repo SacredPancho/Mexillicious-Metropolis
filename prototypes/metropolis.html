@@ -1,0 +1,671 @@
+<title>Agent Metropolis</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Archivo:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+
+<style>
+  /* Committed single visual world: a viewport onto a night-side planet.
+     A light theme would kill every emissive surface, so the page paints
+     its own ground explicitly rather than adapting to the host. */
+  :root{
+    --void:#0c0e17;
+    --ground:#121523;
+    --panel:#171b2b;
+    --panel-2:#1d2234;
+    --line:#272d44;
+    --line-soft:#1f2437;
+    --ink:#e8eaf4;
+    --ink-dim:#9aa2bd;
+    --ink-faint:#6a7290;
+    --amber:#ff9d4d;
+    --slate:#8a93ab;
+    --grey:#69718c;
+    --flag:#f0765c;
+    --display:"Bricolage Grotesque","Trebuchet MS",system-ui,sans-serif;
+    --body:"Archivo","Helvetica Neue",Arial,sans-serif;
+    --mono:"JetBrains Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;background:var(--void);color:var(--ink);
+    font-family:var(--body);font-size:14px;line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{min-height:100vh;display:flex;flex-direction:column}
+
+  header{
+    display:flex;align-items:baseline;flex-wrap:wrap;gap:6px 18px;
+    padding:18px 22px 14px;border-bottom:1px solid var(--line-soft);
+  }
+  h1{font-family:var(--display);font-weight:700;font-size:22px;
+     letter-spacing:-0.015em;margin:0;text-wrap:balance}
+  .sub{color:var(--ink-dim);font-size:13px;max-width:62ch;margin:2px 0 0}
+  .stamp{margin-left:auto;font-family:var(--mono);font-size:10.5px;
+     letter-spacing:0.07em;text-transform:uppercase;color:var(--ink-faint);white-space:nowrap}
+
+  /* the one line that answers "is anything waiting on me" */
+  .verdict{
+    display:flex;align-items:flex-start;gap:9px;
+    padding:11px 22px;border-bottom:1px solid var(--line-soft);
+    background:#141827;font-size:13px;color:var(--ink-dim);
+  }
+  .verdict .bead{
+    width:7px;height:7px;border-radius:50%;background:var(--grey);
+    margin-top:6px;flex:none;box-shadow:0 0 8px var(--grey);
+  }
+  .verdict b{color:var(--ink);font-weight:600}
+
+  main{flex:1;display:grid;grid-template-columns:minmax(0,1fr) 320px;min-height:0}
+
+  .stage{
+    position:relative;min-height:440px;overflow:hidden;
+    background:radial-gradient(120% 90% at 50% 16%,#1b2036 0%,#0d1019 62%,#080a11 100%);
+    border-right:1px solid var(--line-soft);
+  }
+  canvas{display:block;cursor:grab;touch-action:none}
+  canvas.grabbing{cursor:grabbing}
+  canvas.over-district{cursor:move}
+
+  .hint,.readout{
+    position:absolute;font-family:var(--mono);font-size:10.5px;
+    letter-spacing:0.05em;color:var(--ink-faint);pointer-events:none;
+    text-shadow:0 1px 3px rgba(0,0,0,.92);
+  }
+  .hint{left:14px;bottom:12px;display:flex;flex-wrap:wrap;gap:5px 13px}
+  .hint b{color:var(--ink-dim);font-weight:600}
+  .readout{right:14px;top:12px;text-align:right}
+
+  .key{
+    position:absolute;left:14px;top:12px;display:flex;flex-direction:column;gap:4px;
+    font-family:var(--mono);font-size:10px;letter-spacing:0.04em;color:var(--ink-faint);
+    pointer-events:none;text-shadow:0 1px 3px rgba(0,0,0,.92);
+  }
+  .key span{display:flex;align-items:center;gap:6px}
+  .key i{width:7px;height:7px;border-radius:50%;background:var(--c);display:block}
+
+  .rail{
+    background:var(--ground);padding:16px 16px 22px;overflow-y:auto;
+    display:flex;flex-direction:column;gap:11px;min-width:0;
+  }
+  .rail-head{
+    font-family:var(--mono);font-size:10.5px;letter-spacing:0.12em;
+    text-transform:uppercase;color:var(--ink-faint);
+    display:flex;justify-content:space-between;align-items:center;
+  }
+
+  .card{
+    background:var(--panel);border:1px solid var(--line-soft);border-radius:3px;
+    padding:11px 12px 12px;display:flex;flex-direction:column;gap:8px;
+    position:relative;cursor:pointer;
+    transition:border-color .16s ease,background .16s ease;
+  }
+  .card:hover,.card:focus-visible{border-color:var(--line);background:var(--panel-2);outline:none}
+  .card:focus-visible{box-shadow:0 0 0 2px var(--amber)}
+  .card::before{content:"";position:absolute;left:0;top:9px;bottom:9px;width:2px;
+     background:var(--acc);border-radius:2px}
+  .card.unzoned{border-style:dashed;border-color:var(--line)}
+
+  .card-top{display:flex;align-items:flex-start;gap:8px}
+  .name{font-family:var(--display);font-weight:600;font-size:14px;line-height:1.25;
+     letter-spacing:-0.01em;flex:1;min-width:0;word-break:break-word}
+  .coord{font-family:var(--mono);font-size:10.5px;color:var(--ink-faint);
+     padding-top:2px;font-variant-numeric:tabular-nums;white-space:nowrap}
+
+  .figs{display:flex;gap:14px;font-variant-numeric:tabular-nums}
+  .fig{display:flex;flex-direction:column;gap:0}
+  .fig b{font-family:var(--mono);font-size:15px;font-weight:600;line-height:1.2;color:var(--ink)}
+  .fig span{font-family:var(--mono);font-size:9.5px;letter-spacing:0.07em;
+     text-transform:uppercase;color:var(--ink-faint)}
+  .fig.zero b{color:var(--ink-faint)}
+
+  .who{display:flex;flex-direction:column;gap:3px;border-top:1px solid var(--line-soft);padding-top:8px}
+  .who div{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-dim);min-width:0}
+  .who i{width:6px;height:6px;border-radius:50%;background:var(--c);flex:none}
+  .who em{font-style:normal;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .who small{font-family:var(--mono);font-size:9.5px;color:var(--ink-faint);margin-left:auto;flex:none}
+
+  .warn{
+    background:#221a16;border:1px solid #4a3227;border-radius:3px;
+    padding:10px 11px;font-size:12.5px;color:#e8b79c;
+  }
+  .warn b{color:#ffcaa8;font-weight:600;display:block;margin-bottom:3px;
+     font-family:var(--mono);font-size:10px;letter-spacing:0.09em;text-transform:uppercase}
+
+  .note{
+    border-top:1px solid var(--line-soft);padding:15px 22px 22px;
+    color:var(--ink-dim);font-size:12.5px;
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(235px,1fr));gap:14px 26px;
+  }
+  .note h2{font-family:var(--mono);font-size:10.5px;letter-spacing:0.12em;
+     text-transform:uppercase;color:var(--ink-faint);margin:0 0 5px;font-weight:600}
+  .note p{margin:0;max-width:52ch}
+  .note strong{color:var(--ink);font-weight:600}
+
+  @media (max-width:880px){
+    main{grid-template-columns:1fr;grid-template-rows:minmax(400px,54vh) auto}
+    .stage{border-right:none;border-bottom:1px solid var(--line-soft)}
+  }
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Agent Metropolis</h1>
+      <p class="sub">Your live session feed, rendered. Three townships, four active cadets, ten expired.</p>
+    </div>
+    <div class="stamp">snapshot 1 sep 18:10 utc · 14 of more</div>
+  </header>
+
+  <div class="verdict">
+    <span class="bead"></span>
+    <div><b>Nothing is calling you right now.</b> Thirteen sessions are marked review-ready, but every one of them is on a machine that is asleep — so they read as waiting, not as asking. Only the district you are standing in is awake.</div>
+  </div>
+
+  <main>
+    <div class="stage" id="stage">
+      <canvas id="cv"></canvas>
+      <div class="key">
+        <span><i style="--c:#ff9d4d"></i>working — session live</span>
+        <span><i style="--c:#69718c"></i>away — machine unreachable</span>
+        <span><i style="--c:#3a4056"></i>expired — over 24h old</span>
+      </div>
+      <div class="readout" id="readout"></div>
+      <div class="hint">
+        <span><b>drag a district</b> rearrange</span>
+        <span><b>drag ground</b> pan</span>
+        <span><b>pinch / scroll</b> zoom</span>
+      </div>
+    </div>
+
+    <aside class="rail" id="rail">
+      <div class="rail-head"><span>Townships</span><span id="live">—</span></div>
+    </aside>
+  </main>
+
+  <div class="note">
+    <div>
+      <h2>What changed</h2>
+      <p>Townships now come from <strong>outcomes[].repo</strong>, cadets from live sessions, and everything older than 24 hours is gone. The pretty four-district sketch was a guess; this is the feed.</p>
+    </div>
+    <div>
+      <h2>The Commons is the story</h2>
+      <p>Thirteen of fourteen sessions carry <strong>no repo field at all</strong>. Their titles clearly name projects — a calendar view, a carousel fix — but the feed does not connect them, so they stand in the unzoned lot.</p>
+    </div>
+    <div>
+      <h2>ThisThing is empty on purpose</h2>
+      <p>This session touches both repos, and the locked rule sends a cadet to exactly one township — the first outcome. So <strong>ThisThing gets nobody</strong>. That is the rule working, and it is worth deciding whether you like it.</p>
+    </div>
+    <div>
+      <h2>Skyline mass is broken</h2>
+      <p><strong>cost_usd is only present on cloud sessions.</strong> The thirteen CLI sessions report no usage at all, so spend cannot drive the skyline. Session count is the fallback.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  "use strict";
+
+  const cv = document.getElementById("cv");
+  const ctx = cv.getContext("2d");
+  const stage = document.getElementById("stage");
+  const rail = document.getElementById("rail");
+  const readout = document.getElementById("readout");
+  const liveEl = document.getElementById("live");
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  /* ================= snapshot of the real feed =================
+     Pulled 2026-09-01T18:10Z. 14 sessions listed, has_more true.
+     Resolution follows the locked model: township = first outcomes[] repo,
+     else first sources[] repo, else Commons. Cadet lives if RUNNING or
+     updated within 24h. ============================================== */
+  const SNAP = {
+    at: "2026-09-01T18:10Z",
+    listed: 14,
+    townships: [
+      {
+        id: "latino", key: "SacredPancho/latino-social-calendar", label: "latino-social-calendar",
+        kit: "cantina", accent: "#ff9d4d", rim: "#4a3a33", paved: "#5c4136", plinthH: 0.26,
+        spend: 6.04, expired: 0, awake: true,
+        cadets: [
+          { t: "3D agent visualization metropolis", state: "working", origin: "ios", ago: "now" }
+        ]
+      },
+      {
+        id: "thing", key: "SacredPancho/ThisThing", label: "ThisThing",
+        kit: "site", accent: "#8a93ab", rim: "#333a4c", paved: "#2b3142", plinthH: 0.15,
+        spend: 0, expired: 0, awake: false,
+        cadets: []
+      },
+      {
+        id: "commons", key: "__commons", label: "Commons", unzoned: true,
+        kit: "commons", accent: "#69718c", rim: "#2f3446", paved: "#262b3a", plinthH: 0.20,
+        spend: null, expired: 10, awake: false,
+        cadets: [
+          { t: "Masa Republic next steps", state: "away", origin: "cli", ago: "6h" },
+          { t: "Calendar rolling week view", state: "away", origin: "cli", ago: "16h" },
+          { t: "silvass-macbook-air-local-hazy-island", state: "away", origin: "cli", ago: "20h" }
+        ]
+      }
+    ]
+  };
+
+  // starting layout — user-owned from here, never rewritten by a refresh
+  const LAYOUT = { latino: { q: 0, r: 0 }, thing: { q: 1, r: -1 }, commons: { q: 0, r: 1 } };
+  SNAP.townships.forEach(t => { t.q = LAYOUT[t.id].q; t.r = LAYOUT[t.id].r; });
+  const D = SNAP.townships;
+
+  /* ---------- isometric projection ---------- */
+  const SQ3 = Math.sqrt(3), IX = Math.cos(Math.PI / 6), IY = Math.sin(Math.PI / 6), R = 3.0;
+  const cam = { x: 0, y: 0, s: 46 };
+  let W = 0, H = 0;
+
+  const px = (x, y, z) => [
+    (x - z) * IX * cam.s + cam.x,
+    ((x + z) * IY - y) * cam.s + cam.y
+  ];
+  function unpx(sx, sy) {
+    const a = (sx - cam.x) / (IX * cam.s), b = (sy - cam.y) / (IY * cam.s);
+    return { x: (a + b) / 2, z: (b - a) / 2 };
+  }
+
+  const hexCentre = (q, r) => ({ x: R * 1.5 * q, z: R * SQ3 * (r + q / 2) });
+  function hexCorners(cx, cz, k = 1) {
+    const p = [];
+    for (let i = 0; i < 6; i++) { const a = i * Math.PI / 3; p.push([cx + R * k * Math.cos(a), cz + R * k * Math.sin(a)]); }
+    return p;
+  }
+  function worldToHex(x, z) {
+    const q = (2 / 3 * x) / R, r = (-1 / 3 * x + SQ3 / 3 * z) / R, s = -q - r;
+    let rq = Math.round(q), rr = Math.round(r); const rs = Math.round(s);
+    const dq = Math.abs(rq - q), dr = Math.abs(rr - r), ds = Math.abs(rs - s);
+    if (dq > dr && dq > ds) rq = -rr - rs; else if (dr > ds) rr = -rq - rs;
+    return { q: rq, r: rr };
+  }
+
+  /* ---------- shading ---------- */
+  const hx = h => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+  const LIGHT = (() => { const v = [0.45, 1, 0.32], m = Math.hypot(...v); return v.map(c => c / m); })();
+  function shaded(rgb, n) {
+    const d = Math.max(0, n[0] * LIGHT[0] + n[1] * LIGHT[1] + n[2] * LIGHT[2]), f = 0.40 + 0.62 * d;
+    return `rgb(${Math.min(255, rgb[0] * f) | 0},${Math.min(255, rgb[1] * f) | 0},${Math.min(255, rgb[2] * f) | 0})`;
+  }
+  const flat = rgb => `rgb(${rgb[0] | 0},${rgb[1] | 0},${rgb[2] | 0})`;
+
+  function face(pts, fill) {
+    ctx.beginPath();
+    for (let i = 0; i < pts.length; i++) {
+      const p = px(pts[i][0], pts[i][1], pts[i][2]);
+      if (i) ctx.lineTo(p[0], p[1]); else ctx.moveTo(p[0], p[1]);
+    }
+    ctx.closePath(); ctx.fillStyle = fill; ctx.fill();
+  }
+
+  const lights = [];
+
+  function box(cx, cz, w, d, y0, h, col, opt = {}) {
+    const rgb = hx(col);
+    const x0 = cx - w / 2, x1 = cx + w / 2, z0 = cz - d / 2, z1 = cz + d / 2, y1 = y0 + h;
+    face([[x1, y0, z0], [x1, y0, z1], [x1, y1, z1], [x1, y1, z0]], shaded(rgb, [1, 0, 0]));
+    face([[x0, y0, z1], [x1, y0, z1], [x1, y1, z1], [x0, y1, z1]], shaded(rgb, [0, 0, 1]));
+    face([[x0, y1, z0], [x1, y1, z0], [x1, y1, z1], [x0, y1, z1]], shaded(rgb, [0, 1, 0]));
+    if (opt.win && h > 0.5) {
+      const wc = flat(hx(opt.win)), rows = Math.max(1, Math.floor(h / 0.42));
+      for (let i = 0; i < rows; i++) {
+        const yy = y0 + (i + 0.62) * (h / rows), t = Math.min(0.1, h / rows * 0.34);
+        face([[x0 + .1, yy - t, z1 + .01], [x1 - .1, yy - t, z1 + .01], [x1 - .1, yy + t, z1 + .01], [x0 + .1, yy + t, z1 + .01]], wc);
+        face([[x1 + .01, yy - t, z0 + .1], [x1 + .01, yy - t, z1 - .1], [x1 + .01, yy + t, z1 - .1], [x1 + .01, yy + t, z0 + .1]], wc);
+      }
+    }
+    if (opt.glow) lights.push({ x: cx, y: y1, z: cz, c: opt.glow, r: opt.glowR || 26 });
+  }
+
+  function plinth(cx, cz, h, rim, paved, dashed) {
+    const rimC = hx(rim), pavC = hx(paved), outer = hexCorners(cx, cz);
+    for (let i = 0; i < 6; i++) {
+      const a = outer[i], b = outer[(i + 1) % 6];
+      const mx = (a[0] + b[0]) / 2 - cx, mz = (a[1] + b[1]) / 2 - cz, m = Math.hypot(mx, mz);
+      const n = [mx / m, 0, mz / m];
+      if (n[0] + n[2] <= 0) continue;
+      face([[a[0], 0, a[1]], [b[0], 0, b[1]], [b[0], h, b[1]], [a[0], h, a[1]]], shaded(rimC, n));
+    }
+    face(outer.map(p => [p[0], h, p[1]]), shaded(rimC, [0, 1, 0]));
+    face(hexCorners(cx, cz, 0.87).map(p => [p[0], h + 0.004, p[1]]), shaded(pavC, [0, 1, 0]));
+    if (dashed) {           // unzoned districts get a survey line, not a finished kerb
+      ctx.save();
+      ctx.setLineDash([6, 6]); ctx.lineWidth = 1.2; ctx.globalAlpha = 0.5;
+      ctx.strokeStyle = "#7d86a3"; ctx.beginPath();
+      hexCorners(cx, cz, 0.87).forEach((p, i) => {
+        const s = px(p[0], h + 0.01, p[1]); if (i) ctx.lineTo(s[0], s[1]); else ctx.moveTo(s[0], s[1]);
+      });
+      ctx.closePath(); ctx.stroke(); ctx.restore();
+    }
+  }
+
+  function hexRing(cx, cz, y, colour, alpha, width) {
+    ctx.save(); ctx.globalAlpha = alpha; ctx.strokeStyle = colour;
+    ctx.lineWidth = width; ctx.lineJoin = "round"; ctx.beginPath();
+    hexCorners(cx, cz, 0.94).forEach((p, i) => {
+      const s = px(p[0], y, p[1]); if (i) ctx.lineTo(s[0], s[1]); else ctx.moveTo(s[0], s[1]);
+    });
+    ctx.closePath(); ctx.stroke(); ctx.restore();
+  }
+
+  // ghost of an expired session: a scuff on the ground, no body
+  function ghost(x, z, y) {
+    const p = px(x, y + 0.01, z);
+    ctx.save(); ctx.globalAlpha = 0.5; ctx.fillStyle = "#3a4056";
+    ctx.beginPath(); ctx.ellipse(p[0], p[1], 5 * (cam.s / 46), 2.6 * (cam.s / 46), 0, 0, Math.PI * 2);
+    ctx.fill(); ctx.restore();
+  }
+
+  function cadet(x, z, y, state, accent) {
+    const away = state === "away";
+    const body = away ? "#5d6478" : "#dfe4f0";
+    const cap = away ? "#4d5468" : accent;
+    const head = away ? "#6b7286" : "#f2f4fa";
+    box(x, z, 0.15, 0.15, y, 0.28, body);
+    box(x, z, 0.19, 0.19, y + 0.27, 0.09, cap);
+    box(x, z, 0.16, 0.16, y + 0.35, 0.13, head);
+    if (!away) lights.push({ x, y: y + 0.5, z, c: accent, r: 13 });
+    else {
+      const p = px(x, y + 0.62, z);
+      ctx.save(); ctx.globalAlpha = 0.8; ctx.fillStyle = "#69718c";
+      ctx.beginPath(); ctx.arc(p[0], p[1], 2.2, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+    }
+  }
+
+  function rng(seed) {
+    let a = seed >>> 0;
+    return () => {
+      a = (a + 0x6D2B79F5) >>> 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  /* ---------- kits ---------- */
+  const KITS = {
+    // one live project: lit, populated, low and warm
+    cantina(d, cx, cz, y, out, t) {
+      const rand = rng(1207), clay = ["#8c5a44", "#a86b4e", "#75483a", "#9b6350", "#7f5341"];
+      out.push({ d: cx + cz - 0.4, draw: () => box(cx - 0.2, cz + 0.3, 2.4, 1.9, y, 0.07, "#6b4a3c") });
+      for (let i = 0; i < 6; i++) {
+        const a = rand() * Math.PI * 2, rr = 0.9 + rand() * 1.25;
+        const bx = cx + Math.cos(a) * rr, bz = cz + Math.sin(a) * rr;
+        const w = .85 + rand() * .7, dp = .8 + rand() * .6, h = .85 + rand() * .95, c = clay[i % clay.length];
+        out.push({
+          d: bx + bz, draw: () => {
+            box(bx, bz, w, dp, y, h, c, { win: "#ffcf8f" });
+            box(bx, bz + dp / 2 + .22, w + .34, .44, y + h * .66, .07, d.accent);
+          }
+        });
+      }
+      for (let i = 0; i < 3; i++) {
+        const a = rand() * Math.PI * 2, rr = 1.5 + rand() * .7;
+        const tx = cx + Math.cos(a) * rr, tz = cz + Math.sin(a) * rr;
+        out.push({
+          d: tx + tz, draw: () => {
+            box(tx, tz, .1, .1, y, 1.05, "#4e3b30");
+            [[.3, 0], [-.3, 0], [0, .3], [0, -.3]].forEach(o =>
+              box(tx + o[0], tz + o[1], .46, .46, y + 1.02 - Math.abs(o[0] + o[1]) * .1, .08, "#3f6b45"));
+          }
+        });
+      }
+      out.push({
+        d: cx + cz + .9, draw: () => {
+          for (let i = 0; i < 9; i++)
+            lights.push({ x: cx - 1.5 + i * .36, y: y + .95 + Math.sin(i * 1.3) * .06, z: cz + 1.35 + Math.sin(i * .9) * .12, c: "#ffc27a", r: 11 });
+        }
+      });
+      placeCadets(d, cx - 0.2, cz + 0.3, y + 0.07, out, t, 0.7);
+    },
+
+    // no commits, no sessions: foundations and one work light
+    site(d, cx, cz, y, out) {
+      const rand = rng(907);
+      [[-.7, -.4, 1.7, 1.2], [.9, .5, 1.3, 1.0], [-.3, 1.1, 1.0, .8]].forEach(s =>
+        out.push({ d: cx + s[0] + cz + s[1] - .5, draw: () => box(cx + s[0], cz + s[1], s[2], s[3], y, .1, "#3b4152") }));
+      for (let i = 0; i < 7; i++) {
+        const bx = cx - .7 + (rand() - .5) * 1.4, bz = cz - .4 + (rand() - .5) * 1.0, bh = .3 + rand() * .25;
+        out.push({ d: bx + bz, draw: () => box(bx, bz, .05, .05, y + .1, bh, "#6d7488") });
+      }
+      const kx = cx + 1.0, kz = cz - .9;
+      out.push({
+        d: kx + kz + .1, draw: () => {
+          box(kx, kz, .16, .16, y, 2.7, "#b08a3e");
+          box(kx + .55, kz, 1.9, .13, y + 2.55, .13, "#b08a3e");
+          box(kx - .42, kz, .34, .26, y + 2.5, .24, "#7c6330");
+        }
+      });
+      out.push({
+        d: cx + cz + 1.0, draw: () => {
+          box(cx - .9, cz + 1.2, .6, .5, y, .22, "#4a5164");
+          box(cx + .3, cz + 1.5, .09, .09, y, 1.1, "#565e74");
+          lights.push({ x: cx + .3, y: y + 1.15, z: cz + 1.5, c: "#ffb347", r: 30 });
+        }
+      });
+    },
+
+    // the unzoned lot: containers, chain-link, a floodlight, and everyone else
+    commons(d, cx, cz, y, out, t) {
+      const rand = rng(5150), cont = ["#4a5164", "#54506a", "#455063", "#4f5566"];
+      for (let i = 0; i < 7; i++) {
+        const bx = cx - 1.5 + (i % 3) * 1.15 + rand() * .2, bz = cz - 1.2 + Math.floor(i / 3) * 1.05 + rand() * .2;
+        out.push({ d: bx + bz, draw: () => box(bx, bz, 1.0, .5, y, .42 + (i % 2) * .38, cont[i % 4]) });
+      }
+      const fx = cx + 1.6, fz = cz + 1.4;
+      out.push({
+        d: fx + fz + .1, draw: () => {
+          box(fx, fz, .11, .11, y, 2.0, "#575e73");
+          box(fx, fz, .4, .2, y + 2.0, .16, "#9aa2b8", { glow: "#aab4cc", glowR: 34 });
+        }
+      });
+      // 10 expired sessions, present as marks only
+      out.push({
+        d: cx + cz + 1.6, draw: () => {
+          for (let i = 0; i < d.expired; i++) {
+            const a = i / d.expired * Math.PI * 2 + 0.4;
+            ghost(cx + Math.cos(a) * 1.9, cz + Math.sin(a) * 1.5, y);
+          }
+        }
+      });
+      placeCadets(d, cx - 0.1, cz + 0.2, y, out, t, 0.95);
+    }
+  };
+
+  function placeCadets(d, cx, cz, y, out, t, spread) {
+    d.cadets.forEach((c, i) => {
+      const moving = c.state === "working" && !reduced;
+      const a = i / Math.max(1, d.cadets.length) * Math.PI * 2 + (moving ? t * 0.22 : 0.6);
+      const rr = spread * (0.55 + (i % 3) * 0.3);
+      const fx = cx + Math.cos(a) * rr, fz = cz + Math.sin(a) * rr * 0.8;
+      out.push({ d: fx + fz + 0.02, draw: () => cadet(fx, fz, y, c.state, d.accent) });
+      if (c.state === "working") bubble = { x: fx, y: y + 0.62, z: fz, c: d.accent, txt: "●" };
+    });
+  }
+  let bubble = null;
+
+  const STARS = (() => { const rand = rng(88), s = []; for (let i = 0; i < 90; i++) s.push([rand(), rand() * .66, rand() * .9 + .15]); return s; })();
+
+  function frame() {
+    let mx = 0, mz = 0;
+    D.forEach(d => { const c = hexCentre(d.q, d.r); mx += c.x; mz += c.z; });
+    mx /= D.length; mz /= D.length;
+    cam.s = Math.max(22, Math.min(56, Math.min(W / 13, H / 8.5)));
+    cam.x = W / 2 - (mx - mz) * IX * cam.s;
+    cam.y = H / 2 + 36 - ((mx + mz) * IY) * cam.s;
+  }
+  let framed = false;
+  function resize() {
+    const r = stage.getBoundingClientRect(), dpr = Math.min(2, window.devicePixelRatio || 1);
+    W = r.width; H = r.height;
+    cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+    cv.style.width = W + "px"; cv.style.height = H + "px";
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    if (!framed) { frame(); framed = true; }
+  }
+
+  /* ---------- interaction (mouse + touch + pinch) ---------- */
+  let hoverHex = null, drag = null, pan = null;
+  const pointers = new Map();
+  let pinch = null;
+
+  const districtAt = (q, r) => D.find(d => d.q === q && d.r === r) || null;
+  function pointerHex(e) {
+    const b = cv.getBoundingClientRect();
+    const w = unpx(e.clientX - b.left, e.clientY - b.top);
+    return worldToHex(w.x, w.z);
+  }
+
+  cv.addEventListener("pointerdown", e => {
+    cv.setPointerCapture(e.pointerId);
+    pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pointers.size === 2) {
+      const [a, b] = [...pointers.values()];
+      pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), s: cam.s };
+      drag = null; pan = null; return;
+    }
+    const h = pointerHex(e), d = districtAt(h.q, h.r);
+    if (d) drag = { d, from: { q: d.q, r: d.r }, to: h };
+    else { pan = { x: e.clientX, y: e.clientY, cx: cam.x, cy: cam.y }; cv.classList.add("grabbing"); }
+  });
+
+  cv.addEventListener("pointermove", e => {
+    if (pointers.has(e.pointerId)) pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pinch && pointers.size === 2) {
+      const [a, b] = [...pointers.values()];
+      const nd = Math.hypot(a.x - b.x, a.y - b.y);
+      cam.s = Math.max(20, Math.min(96, pinch.s * (nd / pinch.d)));
+      return;
+    }
+    if (pan) { cam.x = pan.cx + (e.clientX - pan.x); cam.y = pan.cy + (e.clientY - pan.y); return; }
+    const h = pointerHex(e);
+    hoverHex = h;
+    if (drag) drag.to = h;
+    cv.classList.toggle("over-district", !!districtAt(h.q, h.r) && !drag);
+  });
+
+  function release(e) {
+    if (e) pointers.delete(e.pointerId);
+    if (pointers.size < 2) pinch = null;
+    if (drag) {
+      const t = drag.to, occ = D.find(d => d !== drag.d && d.q === t.q && d.r === t.r);
+      if (occ) { occ.q = drag.from.q; occ.r = drag.from.r; }
+      drag.d.q = t.q; drag.d.r = t.r;
+      renderRail(); drag = null;
+    }
+    pan = null; cv.classList.remove("grabbing");
+  }
+  cv.addEventListener("pointerup", release);
+  cv.addEventListener("pointercancel", release);
+  cv.addEventListener("pointerleave", () => { hoverHex = null; });
+
+  cv.addEventListener("wheel", e => {
+    e.preventDefault();
+    const b = cv.getBoundingClientRect(), mx = e.clientX - b.left, my = e.clientY - b.top;
+    const before = unpx(mx, my);
+    cam.s = Math.max(20, Math.min(96, cam.s * (e.deltaY < 0 ? 1.09 : 1 / 1.09)));
+    const after = unpx(mx, my);
+    cam.x += ((after.x - before.x) - (after.z - before.z)) * IX * cam.s;
+    cam.y += ((after.x - before.x) + (after.z - before.z)) * IY * cam.s;
+  }, { passive: false });
+
+  /* ---------- frame ---------- */
+  function render(ms) {
+    const t = reduced ? 0 : ms / 1000;
+    lights.length = 0; bubble = null;
+    ctx.clearRect(0, 0, W, H);
+
+    ctx.save();
+    STARS.forEach(s => { ctx.globalAlpha = s[2] * .5; ctx.fillStyle = "#c9d4f5"; ctx.fillRect(s[0] * W, s[1] * H, 1.4, 1.4); });
+    ctx.restore();
+
+    const g = 46;
+    face([[-g, 0, -g], [g, 0, -g], [g, 0, g], [-g, 0, g]], "#191d2c");
+
+    const solids = [];
+    D.forEach(d => {
+      const cell = (drag && drag.d === d) ? drag.to : { q: d.q, r: d.r };
+      const c = hexCentre(cell.q, cell.r);
+      const lift = (drag && drag.d === d) ? 0.55 : 0;
+      const y = d.plinthH + lift;
+      solids.push({
+        d: c.x + c.z - 3, draw: () => {
+          if (lift) { ctx.save(); ctx.globalAlpha = .28; face(hexCorners(c.x, c.z).map(p => [p[0], .01, p[1]]), "#000"); ctx.restore(); }
+          plinth(c.x, c.z, y, d.rim, d.paved, d.unzoned);
+        }
+      });
+      KITS[d.kit](d, c.x, c.z, y, solids, t);
+      d._c = c; d._y = y;
+    });
+
+    solids.sort((a, b) => a.d - b.d);
+    solids.forEach(s => s.draw());
+
+    D.forEach(d => {
+      const hovered = hoverHex && hoverHex.q === d.q && hoverHex.r === d.r;
+      if (hovered || (drag && drag.d === d)) hexRing(d._c.x, d._c.z, d._y + .02, d.accent, .9, 2);
+    });
+    if (drag) { const c = hexCentre(drag.to.q, drag.to.r); hexRing(c.x, c.z, .02, "#ffffff", .34, 1.5); }
+
+    ctx.save(); ctx.globalCompositeOperation = "lighter";
+    lights.forEach(l => {
+      const p = px(l.x, l.y, l.z), rr = l.r * (cam.s / 46);
+      const grd = ctx.createRadialGradient(p[0], p[1], 0, p[0], p[1], rr);
+      grd.addColorStop(0, l.c); grd.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.globalAlpha = .5; ctx.fillStyle = grd;
+      ctx.beginPath(); ctx.arc(p[0], p[1], rr, 0, Math.PI * 2); ctx.fill();
+    });
+    ctx.restore();
+
+    readout.textContent = hoverHex
+      ? `q ${hoverHex.q}  r ${hoverHex.r}` + (districtAt(hoverHex.q, hoverHex.r) ? "  · occupied" : "  · open")
+      : `${(cam.s / 46).toFixed(2)}×  ·  4 live  ·  10 expired`;
+
+    requestAnimationFrame(render);
+  }
+
+  /* ---------- rail ---------- */
+  function renderRail() {
+    rail.querySelectorAll(".card,.warn").forEach(n => n.remove());
+    D.forEach(d => {
+      const el = document.createElement("div");
+      el.className = "card" + (d.unzoned ? " unzoned" : "");
+      el.tabIndex = 0;
+      el.style.setProperty("--acc", d.accent);
+      const spend = d.spend === null ? "n/a" : "$" + d.spend.toFixed(2);
+      el.innerHTML = `
+        <div class="card-top">
+          <div class="name">${d.label}</div>
+          <div class="coord">q${d.q} r${d.r}</div>
+        </div>
+        <div class="figs">
+          <div class="fig${d.cadets.length ? "" : " zero"}"><b>${d.cadets.length}</b><span>live</span></div>
+          <div class="fig${d.expired ? "" : " zero"}"><b>${d.expired}</b><span>expired</span></div>
+          <div class="fig${d.spend ? "" : " zero"}"><b>${spend}</b><span>spend</span></div>
+        </div>
+        ${d.cadets.length ? `<div class="who">${d.cadets.map(c => `
+          <div style="--c:${c.state === "working" ? d.accent : "#69718c"}">
+            <i></i><em>${c.t}</em><small>${c.ago}</small>
+          </div>`).join("")}</div>` : ""}`;
+      const focus = () => { hoverHex = { q: d.q, r: d.r }; };
+      el.addEventListener("mouseenter", focus);
+      el.addEventListener("focus", focus);
+      el.addEventListener("mouseleave", () => { hoverHex = null; });
+      el.addEventListener("blur", () => { hoverHex = null; });
+      rail.appendChild(el);
+    });
+    const warn = document.createElement("div");
+    warn.className = "warn";
+    warn.innerHTML = `<b>Unmapped</b>13 of 14 sessions carry no repo field. Their titles name real projects — <em>Calendar rolling week view</em>, <em>Mexillicious Social Calendar product evolution</em> — but nothing in the feed ties them to a township.`;
+    rail.appendChild(warn);
+    liveEl.textContent = D.reduce((n, d) => n + d.cadets.length, 0) + " live";
+  }
+
+  new ResizeObserver(resize).observe(stage);
+  resize(); renderRail(); requestAnimationFrame(render);
+})();
+</script>
