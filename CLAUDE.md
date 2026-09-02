@@ -64,6 +64,12 @@ views read the same townships and add live cadets on top.
 - **`prism()` is the only solid primitive.** It extrudes any convex footprint, so
   rotated and n-sided shapes come free. Add shapes by writing footprints, not new
   drawing code.
+- **Every district is composed by hand. There are no district templates.** A stadium,
+  a zócalo and a control yard have nothing structural in common and should not be
+  forced through one layout schema. Write each district's footprints for that project.
+- **What is shared is a level below layout:** the primitive, the material library, the
+  scale rule, the sun angle and the shadow treatment. Drop those and sixteen districts
+  stop reading as one city. Keep them and each district can be entirely its own thing.
 - **One landmark per district.** At hero scale a district is ~90px. A second large
   object competes with the silhouette and both stop reading.
 
@@ -73,8 +79,8 @@ views read the same townships and add live cadets on top.
   plane; townships are prop groups placed on it, never tiles carrying their own ground.
 - Borders are physical — a plinth raised a different amount per district, so seams are a
   lit step. Glowing rings are hover/alert state only.
-- Themes vary on five knobs and nothing else: accent hue, prop kit, layout rule, ground
-  tint, figure behaviour. Camera, sun, scale rule and material library are fixed.
+- A district varies freely in layout, landmark, props and silhouette. Camera, sun, scale
+  rule, material library and shadow treatment are fixed across all of them.
 - Painter's algorithm: objects sorted by `x + z`, shadows gathered in a geometry-only
   pass (`SILENT`) then filled once so they never double-darken.
 
