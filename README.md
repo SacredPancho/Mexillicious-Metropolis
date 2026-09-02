@@ -51,13 +51,40 @@ machine and die when it sleeps. The account feed spans iOS, CLI and cloud.
    drive skyline mass. Session count is the fallback.
 4. **REVIEW_READY needs a compound rule.** It fires on sessions whose machine is asleep.
    Alert only when `status_bucket = REVIEW_READY` AND `connection_status = connected`.
-5. **No reply path.** The feed is read-only. "Reply" has to open a session, not answer in
-   place. There is no supported way to type into a session already running in a terminal.
+5. **The reply path is asymmetric.** Cloud sessions can be answered from anywhere with
+   `claude -p "message" --cloud <session-id>` (add `--output-format json` for
+   `{ok, session_id, url}`). Local terminal sessions cannot: there is no supported way to
+   type into one that is already running. For those, `--resume` works only after the
+   session stops, and `claude attach <id>` works for background ones.
+
+## Resolved: how the backend reads and writes
+
+Checked against the docs on 1 Sep 2026.
+
+**There is no public HTTP API for the Claude Code session list.** `GET /v1/sessions` on
+api.anthropic.com is a different product — Managed Agents, IDs `sesn_...`, authenticated
+with `X-Api-Key`, carrying `agent_id`, `deployment_id`, `vault_ids` and
+`outcome_evaluations`. It does not return claude.ai/code sessions. The docs say to find a
+session ID "in your session list at claude.ai/code", which is a UI, not an endpoint.
+
+So both halves go through the `claude` CLI, not HTTP:
+
+| Need | Mechanism |
+| --- | --- |
+| Read the roster | headless Claude Code / Agent SDK process with the claude-code-remote MCP server attached |
+| Reply to a cloud session | `claude -p "message" --cloud <session-id>` |
+| Open a session locally | `claude --teleport <session-id>` |
+| Local background sessions | `claude agents --json`, `claude attach <id>` |
+
+The backend is therefore a Node process that shells out to `claude`. No API key, no
+reverse-engineering, nothing unsupported. Cloud session IDs are `session_...` or `cse_...`.
 
 ## Next
 
-- Verify whether a standalone app can call the session-list endpoint at all. If not, the
-  backend has to be a headless Claude Code / Agent SDK process with the MCP server attached.
-- Resolve the session-ID join, or decide the Commons is acceptable for v1.
+- Resolve the session-ID join, or decide the Commons is acceptable for v1. This is now the
+  only thing blocking a backend. Test on a machine with real local sessions:
+  compare `claude agents --json` UUIDs against the `session_...` IDs in the account feed.
 - Decide: does a session touching two repos put a marker in the secondary township, or
   only the primary? Currently primary only, which leaves this repo's own district empty.
+- Add the compound alert rule to the renderer: alert only when
+  `status_bucket = REVIEW_READY` AND `connection_status = connected`.
