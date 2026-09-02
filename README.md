@@ -48,6 +48,20 @@ machine and die when it sleeps. The account feed spans iOS, CLI and cloud.
 
 ## Known problems
 
+0. **First-source attribution is wrong, proven by this project's own session.** The
+   session that built all of this lists `latino-social-calendar` as `sources[0]` and
+   pushed every commit to `Mexillicious-Metropolis`, which joined the list third. The
+   Claude app files it under the calendar; the locked rule would put its cadet in the
+   calendar's township too. Neither `sources` order nor `outcomes` order tracks where
+   work actually landed, and both repos here even carry the same branch name, so
+   outcomes cannot disambiguate either.
+
+   **Revised rule:** a session appears in every township it touches — solid in the repo
+   it pushed to when that is knowable, dimmed in the others — rather than being assigned
+   to exactly one by list order. Showing a session in two places is more truthful than
+   confidently showing it in the wrong one. This reverses the earlier "exactly one
+   township" decision.
+
 1. **Attribution is missing.** 13 of 14 sessions in the live sample carried no repo field.
    Their titles clearly name projects, but nothing in the feed connects them. Everything
    unmapped lands in a "Commons" district — which is most of the city.
