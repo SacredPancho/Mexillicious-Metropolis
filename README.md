@@ -10,6 +10,10 @@ Status: **design + geometry prototype.** No backend yet.
 
 - `prototypes/metropolis.html` — isometric renderer, hex lattice, drag-to-rearrange.
   Standalone: no build, no dependencies, no CDN. Open it in a browser.
+- `prototypes/hero.html` — the public, read-only website hero. Daylight scale-model look,
+  click a district for details, fed by a hand-written `PROJECTS` array. No session data,
+  no backend, no network calls. Drop `.hero` + the script into a page and delete the notes
+  block. Follows the visitor's colour scheme; force it with `data-theme` on the root.
 - `docs/data-model.html` — field-by-field mapping from the session feed to what you see.
 
 Both are also published as artifacts:
@@ -78,6 +82,18 @@ So both halves go through the `claude` CLI, not HTTP:
 
 The backend is therefore a Node process that shells out to `claude`. No API key, no
 reverse-engineering, nothing unsupported. Cloud session IDs are `session_...` or `cse_...`.
+
+## Three targets, one engine
+
+| | Wall display | Control view | Website hero |
+| --- | --- | --- | --- |
+| Data | live session feed | live session feed | curated static JSON |
+| Interaction | none | drag, hover, reply | click a district only |
+| Read distance | 3 m | 40 cm | 40 cm, phone-first |
+| Infra | Mac mini, always on | laptop / phone | none |
+
+The public hero must never share a data source with the other two. Session titles and spend
+reveal unreleased work and competitive research.
 
 ## Next
 
