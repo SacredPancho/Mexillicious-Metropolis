@@ -282,15 +282,11 @@
     }
   };
   // the city keeps the viewer's hours: lit by day, glowing after dark
+  // The wall display is a light source in a room: always night, whatever the hour.
+  // ?theme=day forces the lit city for comparison.
   function pickPalette() {
-    const q = new URLSearchParams(location.search).get("theme");   // ?theme=day | night
-    if (q === "day") return PALETTES.day;
-    if (q === "night") return PALETTES.night;
-    const stamp = document.documentElement.getAttribute("data-theme");
-    if (stamp === "dark") return PALETTES.night;
-    if (stamp === "light") return PALETTES.day;
-    const h = new Date().getHours();
-    return (h >= 19 || h < 7) ? PALETTES.night : PALETTES.day;
+    return new URLSearchParams(location.search).get("theme") === "day"
+      ? PALETTES.day : PALETTES.night;
   }
   let P = pickPalette();
   document.getElementById("hero").classList.toggle("night", P.night);

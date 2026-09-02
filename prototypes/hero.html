@@ -277,13 +277,13 @@
     }
   };
   // the city keeps the viewer's hours: lit by day, glowing after dark
+  // Time of day comes from the clock, never from the host page's UI theme —
+  // a viewer in light mode should still get the night city after dark.
+  // ?theme=day|night overrides.
   function pickPalette() {
-    const q = new URLSearchParams(location.search).get("theme");   // ?theme=day | night
+    const q = new URLSearchParams(location.search).get("theme");
     if (q === "day") return PALETTES.day;
     if (q === "night") return PALETTES.night;
-    const stamp = document.documentElement.getAttribute("data-theme");
-    if (stamp === "dark") return PALETTES.night;
-    if (stamp === "light") return PALETTES.day;
     const h = new Date().getHours();
     return (h >= 19 || h < 7) ? PALETTES.night : PALETTES.day;
   }
