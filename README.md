@@ -1,10 +1,13 @@
-# Agent Metropolis
+# Mexillicious Metropolis
 
 A 3D world where each Claude Code project is a township on a shared plane, and each
 live session is a "cadet" walking around inside it. When a session needs a reply, its
 district signals — readable at city zoom, where a cadet is two pixels tall.
 
 Status: **design + geometry prototype.** No backend yet.
+
+Repo: `SacredPancho/Mexillicious-Metropolis`. Local working copy lives at
+`~/Documents/_MEXILLICIOUS/AI/Mexillicious Metropolis`.
 
 ## Open it
 
