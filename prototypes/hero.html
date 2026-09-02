@@ -232,10 +232,10 @@
       meta: { Stack: "Canvas 2D · Node", Since: "2026" }, link: null
     },
     {
-      name: "Your next project",
-      accent: "#a8842c", kit: "plot", status: "Placeholder",
-      blurb: "Add an entry to PROJECTS and a district appears here, built out by its kit.",
-      meta: { Stack: "—", Since: "—" }, link: null
+      name: "Mexillicious Eats",
+      accent: "#c4697f", kit: "panaderia", status: "Active",
+      blurb: "A website for the bakery. Menu, orders and the day's pan dulce.",
+      meta: { Stack: "Add yours", Since: "2026" }, link: null
     }
   ];
 
@@ -425,6 +425,30 @@
     box(x, z, .1, .1, y, .62 * s, P.trim, { top: P.trim });
     prism(ngon(x, z, .3 * s, 6, .4), y + .56 * s, .26 * s, P.leaf, { top: P.leafTop });
   }
+
+  // a concha: stacked dome, sugar crust, scored shell pattern
+  function concha(cx, cz, y, S, crust, bread) {
+    const rs = [1.0, .90, .76, .56, .30].map(v => v * S);
+    const hs = [.17, .13, .12, .11, .10].map(v => v * (0.6 + S * 0.4));
+    castPoly(ngon(cx, cz, rs[0], 12), y, hs.reduce((a, b) => a + b, 0));
+    let yy = y;
+    rs.forEach((r, i) => {
+      const col = i === 0 ? bread : crust;
+      prism(ngon(cx, cz, r, 14, i * .11), yy, hs[i], col, { top: col });
+      yy += hs[i];
+      if (i >= 1) {                                  // score the exposed annulus
+        const rin = rs[i + 1] !== undefined ? rs[i + 1] : 0;
+        const rm = (r + rin) / 2, len = Math.max(.05, (r - rin) * .94);
+        for (let k = 0; k < 8; k++) {
+          const a = k / 8 * Math.PI * 2 + i * .19;
+          prism(rect(cx + Math.cos(a) * rm, cz + Math.sin(a) * rm, len, .055 * S, a),
+                yy, .012, bread, { top: bread });
+        }
+      }
+    });
+  }
+
+  const puffs = [];   // chimney steam, drawn in screen space after the solids
 
   /* ══════════ district kits — each one built from its project's subject ══════════ */
   const KITS = {
@@ -638,6 +662,70 @@
       walkers(p, cx + .2, cz + .3, y + .035, out, t, 3, 1.0);
     },
 
+    /* Mexillicious Eats: a panaderia. Shopfront and awning in the middle,
+       two oversized conchas sitting on the plaza, oven venting out the back. */
+    panaderia(p, cx, cz, y, out, t) {
+      out.push({ d: cx + cz - 1.5, draw: () => prism(ngon(cx, cz, 2.0, 12, .26), y, .04, P.stone, { top: P.paved }) });
+
+      const bx = cx, bz = cz - .25;
+      out.push({
+        d: bx + bz, draw: () => {
+          castPoly(rect(bx, bz, 1.75, 1.25), y, 1.18);
+          box(bx, bz, 1.7, 1.2, y, 1.0, "#ddcaa8", { win: true, top: P.roof });
+          box(bx, bz, 1.86, 1.36, y + 1.0, .08, "#a86b52", { top: "#b2705a" });   // tile, not accent
+          [-.55, -.18, .19, .56].forEach((o, k) =>                     // striped awning
+            box(bx + o, bz + .82, .37, .58, y + .62, .06,
+                k % 2 ? p.accent : "#f0e7d6", { top: k % 2 ? p.accent : "#f0e7d6" }));
+          box(bx, bz - .1, .9, .1, y + 1.08, .3, "#f0e7d6", { top: p.accent });   // sign
+        }
+      });
+
+      // oven and chimney at the back
+      const ox = cx + .95, oz = cz - 1.25;
+      out.push({
+        d: ox + oz - .1, draw: () => {
+          castPoly(rect(ox, oz, .8, .7), y, 1.7);
+          box(ox, oz, .78, .66, y, .5, "#a8785c", { top: "#8f6449" });
+          box(ox + .22, oz, .26, .26, y + .5, 1.15, "#9c6e52", { top: "#7d543d" });
+          if (!SILENT && !reduced) {
+            for (let i = 0; i < 4; i++) {
+              const ph = (t * .32 + i * .25) % 1;
+              puffs.push({ x: ox + .22 + Math.sin(t * .7 + i) * .18, y: y + 1.68 + ph * 1.15,
+                           z: oz, r: 7 + ph * 16, a: (1 - ph) * .3 });
+            }
+          }
+        }
+      });
+
+      // the two conchas
+      out.push({ d: cx - 1.4 + cz + .62, draw: () => concha(cx - 1.4, cz + .62, y, 1.0, "#e8a3b3", "#c9a06a") });
+      out.push({ d: cx + 1.42 + cz + .95, draw: () => concha(cx + 1.42, cz + .95, y, .82, "#e6c777", "#c9a06a") });
+
+      // trays of pan dulce by the door, flour sacks at the side
+      out.push({
+        d: cx + cz + .55, draw: () => {
+          [[-.62, .62], [.1, .74]].forEach((o, k) => {
+            castPoly(rect(cx + o[0], cz + o[1], .5, .34, .2), y, .3);
+            box(cx + o[0], cz + o[1], .48, .32, y, .22, "#a8875f", { rot: .2, top: "#8d6f4c" });
+            [-.12, .06].forEach(d2 => box(cx + o[0] + d2, cz + o[1], .12, .12, y + .22, .07,
+              k ? "#e6c777" : "#e8a3b3", { rot: .2, top: k ? "#e6c777" : "#e8a3b3" }));
+          });
+        }
+      });
+      out.push({
+        d: cx + 1.5 + cz - .35, draw: () => {
+          castPoly(rect(cx + 1.5, cz - .35, .55, .45, -.3), y, .46);
+          box(cx + 1.5, cz - .35, .5, .4, y, .26, "#e2dac6", { rot: -.3, top: "#d3c9b0" });
+          box(cx + 1.45, cz - .3, .42, .34, y + .26, .2, "#eae3d1", { rot: .1, top: "#dbd3bd" });
+        }
+      });
+
+      // a queue at the counter
+      [[-.5, .95], [-.2, 1.12], [.16, 1.24]].forEach((o, i) =>
+        out.push({ d: cx + o[0] + cz + o[1] + .02, draw: () => figure(cx + o[0], cz + o[1], y + .04, p.accent) }));
+      walkers(p, cx, cz + .4, y + .04, out, t, 2, 1.5);
+    },
+
     /* Unclaimed: surveyed, pegged, one pallet of material waiting. */
     plot(p, cx, cz, y, out, t) {
       out.push({
@@ -749,7 +837,7 @@
   function render(ms) {
     const t = reduced ? 0 : ms / 1000;
     setSun(reduced ? 0.9 : 0.9 + Math.sin(t * 0.05) * 0.28);
-    shadows.length = 0;
+    shadows.length = 0; puffs.length = 0;
 
     ctx.clearRect(0, 0, W, H);
     ctx.fillStyle = P.sky; ctx.fillRect(0, 0, W, H);
@@ -776,6 +864,18 @@
     ctx.restore();
 
     solids.forEach(s => s.draw());
+
+    if (puffs.length) {
+      ctx.save();
+      puffs.forEach(q => {
+        const pt = px(q.x, q.y, q.z);
+        const g2 = ctx.createRadialGradient(pt[0], pt[1], 0, pt[0], pt[1], q.r * (cam.s / 46));
+        g2.addColorStop(0, `rgba(250,248,242,${q.a})`); g2.addColorStop(1, "rgba(250,248,242,0)");
+        ctx.fillStyle = g2;
+        ctx.beginPath(); ctx.arc(pt[0], pt[1], q.r * (cam.s / 46), 0, Math.PI * 2); ctx.fill();
+      });
+      ctx.restore();
+    }
 
     if (!reduced) {
       const cxp = ((t * 26) % (W + 700)) - 350;
