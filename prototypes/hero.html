@@ -520,25 +520,99 @@
   }
   const seedOf = s => { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; };
 
+  // Each cadet tours four waypoints inside its own district: walk, pause, walk.
+  // Deterministic from a seed, so nobody teleports between frames.
+  const ROUTES = new Map();
+  function walkRoute(seed, t, cx, cz, rad, obst) {
+    let W0 = ROUTES.get(seed);
+    if (!W0) {
+      const r = rng(seed);
+      const blocked = (x, z) => obst.some(o => {
+        const dx = x - o.x, dz = z - o.z; return dx * dx + dz * dz < o.r * o.r;
+      });
+      const clear = (a, b) => {                    // the whole leg, not just its ends
+        for (let i = 0; i <= 12; i++) {
+          const k = i / 12;
+          if (blocked(a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k)) return false;
+        }
+        return true;
+      };
+      const pts = [];
+      for (let i = 0; i < 4; i++) {
+        let pt = null;
+        for (let tries = 0; tries < 80 && !pt; tries++) {
+          const a = r() * Math.PI * 2, d = rad * (.28 + r() * .72);
+          const c = [cx + Math.cos(a) * d, cz + Math.sin(a) * d * .82];
+          if (blocked(c[0], c[1])) continue;
+          if (pts.length && !clear(pts[pts.length - 1], c)) continue;
+          pt = c;
+        }
+        if (!pt) break;
+        pts.push(pt);
+      }
+      if (!pts.length) pts.push([cx, cz]);
+      // walk the chain out and back, so every leg is one already proven clear
+      W0 = pts.concat(pts.slice(1, -1).reverse());
+      ROUTES.set(seed, W0);
+    }
+    const n = W0.length;
+    if (n === 1) return { x: W0[0][0], z: W0[0][1], moving: false, gait: 0, head: 0 };
+    const SPEED = .42, PAUSE = 1.3 + (seed % 7) * .26;
+    const legs = W0.map((q, i) => {
+      const b = W0[(i + 1) % n];
+      return Math.max(.35, Math.hypot(b[0] - q[0], b[1] - q[1]) / SPEED);
+    });
+    const cycle = legs.reduce((a, b) => a + b, 0) + PAUSE * n;
+    let u = ((t + (seed % 100) * .17) % cycle + cycle) % cycle;
+    for (let i = 0; i < n; i++) {
+      const nxt = W0[(i + 1) % n];
+      if (u < PAUSE) return { x: W0[i][0], z: W0[i][1], moving: false, gait: 0,
+                              head: Math.atan2(nxt[1] - W0[i][1], nxt[0] - W0[i][0]) };
+      u -= PAUSE;
+      if (u < legs[i]) {
+        const k = u / legs[i], a = W0[i];
+        return { x: a[0] + (nxt[0] - a[0]) * k, z: a[1] + (nxt[1] - a[1]) * k,
+                 moving: true, gait: u * 7.4,
+                 head: Math.atan2(nxt[1] - a[1], nxt[0] - a[0]) };
+      }
+      u -= legs[i];
+    }
+    return { x: W0[0][0], z: W0[0][1], moving: false, gait: 0, head: 0 };
+  }
+
   // the space cadet: suited, domed helmet, and a face that lights up when it wants you
-  function figure(x, z, y, accent, alert) {
+  function figure(x, z, y, accent, alert, head = 0, gait = 0, moving = false) {
     const SUIT = "#eef1f7", SUIT2 = "#d5dae8", NAVY = "#3c4573", TRIM = "#ff8a3d";
     castPoly(roundRect(x, z, .3, .26), y, .66);
 
-    box(x - .075, z + .03, .13, .17, y, .05, NAVY, { top: NAVY });          // boots
-    box(x + .075, z + .03, .13, .17, y, .05, NAVY, { top: NAVY });
-    box(x - .065, z, .105, .12, y + .05, .20, SUIT, { top: SUIT2 });        // legs
-    box(x + .065, z, .105, .12, y + .05, .20, SUIT, { top: SUIT2 });
-    box(x - .065, z, .112, .07, y + .13, .035, TRIM, { top: TRIM });        // knee pads
-    box(x + .065, z, .112, .07, y + .13, .035, TRIM, { top: TRIM });
+    // stride: legs swing along the heading, arms swing opposite
+    const ch = Math.cos(head), sh = Math.sin(head);
+    const sw = moving ? Math.sin(gait) * .075 : 0;
+    const bob = moving ? Math.abs(Math.sin(gait)) * .014 : 0;
+    const side = q => [x - sh * q * .075, z + ch * q * .075];        // left/right of heading
+    const fore = q => [ch * q, sh * q];                              // along the heading
+    const [lx, lz] = side(-1), [rx2, rz] = side(1);
+    const [fx1, fz1] = fore(sw), [fx2, fz2] = fore(-sw);
 
-    box(x - .05, z - .13, .22, .11, y + .25, .17, SUIT2, { top: SUIT2 });   // life support pack
-    box(x, z, .25, .19, y + .25, .21, SUIT, { top: SUIT2 });                // torso
-    box(x - .125, z, .06, .16, y + .41, .035, TRIM, { top: TRIM });         // shoulder trim
-    box(x + .125, z, .06, .16, y + .41, .035, TRIM, { top: TRIM });
-    box(x - .155, z + .01, .075, .1, y + .26, .18, SUIT, { top: SUIT2 });   // arms
-    box(x + .155, z + .01, .075, .1, y + .26, .18, SUIT, { top: SUIT2 });
-    box(x, z, .1, .1, y + .46, .03, SUIT2, { top: SUIT2 });                 // neck ring
+    box(lx + fx1, lz + fz1, .13, .17, y, .05, NAVY, { rot: head, top: NAVY });      // boots
+    box(rx2 + fx2, rz + fz2, .13, .17, y, .05, NAVY, { rot: head, top: NAVY });
+    box(lx + fx1 * .7, lz + fz1 * .7, .105, .12, y + .05, .20, SUIT, { rot: head, top: SUIT2 });
+    box(rx2 + fx2 * .7, rz + fz2 * .7, .105, .12, y + .05, .20, SUIT, { rot: head, top: SUIT2 });
+    box(lx + fx1 * .7, lz + fz1 * .7, .112, .07, y + .13, .035, TRIM, { rot: head, top: TRIM });
+    box(rx2 + fx2 * .7, rz + fz2 * .7, .112, .07, y + .13, .035, TRIM, { rot: head, top: TRIM });
+    y += bob;
+
+    const [px2, pz2] = fore(-.13);
+    box(x + px2, z + pz2, .22, .11, y + .25, .17, SUIT2, { rot: head, top: SUIT2 });  // life support
+    box(x, z, .25, .19, y + .25, .21, SUIT, { rot: head, top: SUIT2 });               // torso
+    const [sxl, szl] = side(-1.65), [sxr, szr] = side(1.65);
+    box(sxl, szl, .06, .16, y + .41, .035, TRIM, { rot: head, top: TRIM });           // shoulders
+    box(sxr, szr, .06, .16, y + .41, .035, TRIM, { rot: head, top: TRIM });
+    const [axl, azl] = side(-2.05), [axr, azr] = side(2.05);
+    const [gx1, gz1] = fore(-sw * .8), [gx2, gz2] = fore(sw * .8);                    // arms counter-swing
+    box(axl + gx1, azl + gz1, .075, .1, y + .26, .18, SUIT, { rot: head, top: SUIT2 });
+    box(axr + gx2, azr + gz2, .075, .1, y + .26, .18, SUIT, { rot: head, top: SUIT2 });
+    box(x, z, .1, .1, y + .46, .03, SUIT2, { top: SUIT2 });                           // neck ring
 
     const hy = y + .48;                                                      // helmet dome
     [[.155, .075, 0], [.138, .05, .075], [.10, .042, .125]].forEach((L, i) =>
@@ -697,7 +771,19 @@
         }
       });
 
-      walkers(p, cx, cz, y + .04, out, t, 5, 1.15);
+      const ob = [{ x: cx, z: cz, r: 1.02 }, { x: mx, z: mz, r: .38 }];
+      for (let i = 0; i < 4; i++) {
+        const aa = i * Math.PI / 2 + .55;
+        ob.push({ x: cx + Math.cos(aa) * 1.42, z: cz + Math.sin(aa) * 1.42, r: .62 });
+      }
+      const rb = rng(seedOf(p.name));
+      for (let i = 0; i < 4; i++) {
+        const aa = i * Math.PI / 2 - .5, rr2 = 2.05 + rb() * .18;
+        ob.push({ x: cx + Math.cos(aa) * rr2, z: cz + Math.sin(aa) * rr2, r: .78 });
+      }
+      [[-1.55, 1.5], [1.7, 1.35], [-1.75, -1.15]].forEach(o =>
+        ob.push({ x: cx + o[0], z: cz + o[1], r: .42 }));
+      walkers(p, cx, cz, y + .04, out, t, 5, 2.15, ob);
     },
 
     /* World Cup: a raked oval bowl with a marked pitch, floodlights,
@@ -764,7 +850,10 @@
       });
       out.push({ d: tx + tz + .3, draw: () => figure(tx + .2, tz + .18, y + .03, p.accent, p.needsYou) });
 
-      walkers(p, sx, sz, y + .04, out, t, 3, 1.75);
+      const ob = [{ x: sx, z: sz, r: 2.0 }, { x: tx, z: tz, r: 1.0 }];
+      [[-.78, -.78], [.78, -.78], [-.78, .78], [.78, .78]].forEach(o =>
+        ob.push({ x: sx + o[0] * (A + DEPTH), z: sz + o[1] * (B + DEPTH), r: .26 }));
+      walkers(p, cx, cz, y + .04, out, t, 3, 2.3, ob);
     },
 
     /* Mexillicious Metropolis: the district that watches the others.
@@ -813,7 +902,10 @@
           }
         }));
 
-      walkers(p, cx + .2, cz + .3, y + .035, out, t, 3, 1.0);
+      const ob = [{ x: tx, z: tz, r: .8 }, { x: dx, z: dz, r: .48 },
+                  { x: cx - .15, z: cz + 1.15, r: .95 }, { x: cx + 1.15, z: cz + .75, r: .72 },
+                  { x: cx - 1.5, z: cz + .3, r: .22 }, { x: cx - 1.25, z: cz - 1.35, r: .22 }];
+      walkers(p, cx, cz, y + .035, out, t, 3, 2.2, ob);
     },
 
     /* Mexillicious Eats: a panaderia. Shopfront and awning in the middle,
@@ -877,7 +969,11 @@
       // a queue at the counter
       [[-.5, .95], [-.2, 1.12], [.16, 1.24]].forEach((o, i) =>
         out.push({ d: cx + o[0] + cz + o[1] + .02, draw: () => figure(cx + o[0], cz + o[1], y + .04, p.accent, p.needsYou) }));
-      walkers(p, cx, cz + .4, y + .04, out, t, 2, 1.5);
+      const ob = [{ x: bx, z: bz, r: 1.18 }, { x: ox, z: oz, r: .58 },
+                  { x: cx - 1.4, z: cz + .62, r: 1.12 }, { x: cx + 1.42, z: cz + .95, r: .95 },
+                  { x: cx + 1.5, z: cz - .35, r: .45 },
+                  { x: cx - .62, z: cz + .62, r: .38 }, { x: cx + .1, z: cz + .74, r: .38 }];
+      walkers(p, cx, cz, y + .04, out, t, 3, 2.2, ob);
     },
 
     /* Unclaimed: surveyed, pegged, one pallet of material waiting. */
@@ -901,16 +997,17 @@
           box(cx + .3, cz + .4, .7, .5, y + .16, .12, P.walls[1], { rot: .2, top: P.walls[1] });
         }
       });
-      walkers(p, cx, cz, y, out, t, 1, .5);
+      walkers(p, cx, cz, y, out, t, 1, 1.6, [{ x: cx + .3, z: cz + .4, r: .55 }]);
     }
   };
 
-  function walkers(p, cx, cz, y, out, t, n, spread) {
+  function walkers(p, cx, cz, y, out, t, n, spread, obst = []) {
     for (let i = 0; i < n; i++) {
-      const a = i / n * Math.PI * 2 + t * 0.17 + seedOf(p.name) % 7;
-      const rr = spread * (.6 + (i % 3) * .22);
-      const fx = cx + Math.cos(a) * rr, fz = cz + Math.sin(a) * rr * .8;
-      out.push({ d: fx + fz + .02, draw: () => figure(fx, fz, y, p.accent, p.needsYou) });
+      const w = walkRoute(seedOf(p.name) + i * 977, t, cx, cz, spread, obst);
+      out.push({
+        d: w.x + w.z + .02,
+        draw: () => figure(w.x, w.z, y, p.accent, p.needsYou, w.head, w.gait, w.moving)
+      });
     }
   }
 
