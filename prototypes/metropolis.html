@@ -270,7 +270,7 @@
       horizon: "#f6ecf4", horizonGlow: "255,236,244", horizonAmt: .28,
       floorFar: "#b6aed6", floorDeep: "#a99fcd", groundFade: "rgba(182,174,214,0)",
       moons: [{ x: .80, y: .20, r: .05, c: "#fffdf3", hi: "#ffffff", lo: "#e9e2d4", halo: "255,250,235", glow: .35 }],
-      dustAlpha: .15, orbGlow: .3, poolAmt: .4
+      dustAlpha: .15, poolAmt: .4
     },
     night: {
       night: true, emissiveWalls: true, bloom: [.30, .15], starAlpha: 1, bokehAlpha: 1,
@@ -288,7 +288,7 @@
       floorFar: "#120d2c", floorDeep: "#07061a", groundFade: "rgba(18,13,44,0)",
       moons: [{ x: .15, y: .28, r: .14, c: "#ffa7e0", hi: "#ffd8f1", lo: "#e07cc0", halo: "255,167,224", glow: 1, spots: true },
               { x: .80, y: .30, r: .045, c: "#fff2a0", hi: "#fffbd6", lo: "#e9d070", halo: "255,242,160", glow: .8 }],
-      dustAlpha: .8, orbGlow: 1, poolAmt: 1
+      dustAlpha: .8, poolAmt: 1
     }
   };
   // the city keeps the viewer's hours: lit by day, glowing after dark
@@ -450,7 +450,7 @@
       if (nn[0] + nn[2] <= 0) continue;
       face([[a[0], y0, a[1]], [b[0], y0, b[1]], [b[0], y0 + h, b[1]], [a[0], y0 + h, a[1]]],
            shade(rgb, nn), shade(dim(rgb, lit ? .80 : .62), nn));
-      if (h > .62 && !opt.plain) {                 // base course and cornice
+      if (h > .62) {                               // base course and cornice
         const e = .012;
         const ax = a[0] + nn[0] * e, az = a[1] + nn[2] * e;
         const bx2 = b[0] + nn[0] * e, bz2 = b[1] + nn[2] * e;
@@ -460,7 +460,7 @@
              shade(dim(rgb, 1.14), nn), shade(dim(rgb, .92), nn));
       }
       const edgeLen = Math.hypot(b[0] - a[0], b[1] - a[1]);
-      if (h > .95 && edgeLen > .34 && !opt.plain) { // pilasters break up a blank wall
+      if (h > .95 && edgeLen > .34) {              // pilasters break up a blank wall
         const e2 = .010;
         for (let k = 1; k <= 2; k++) {
           const u = k / 3, hw2 = .026 / edgeLen;
@@ -1113,46 +1113,6 @@
     });
   }
 
-  // Scenery in the sky: tumbling sugar cubes and pastel orbs, placed relative to the
-  // city centre so they frame it at any viewport. They carry no data.
-  const FLOATERS = [
-    [-8.25, 2.25, 3.5, 1.0, 0], [1.35, -8.15, 3.8, .8, 3], [6.9, -7.1, 2.5, .9, 1],
-    [-3.6, 9.4, 1.6, .7, 4], [-3.0, -6.8, 4.2, .6, 2], [12.05, -.95, 1.2, .8, 5]
-  ].map((s, i) => ({ ox: s[0], oz: s[1], y: s[2], s: s[3], c: s[4], ph: i * 1.7,
-                     sp: .22 + (i % 3) * .09, rot: i * .8, rsp: (i % 2 ? 1 : -1) * (.05 + (i % 3) * .02) }));
-  const ORBS = (() => {
-    const rand = rng(303), a = [];
-    for (let i = 0; i < 10; i++) {
-      const ang = i / 10 * Math.PI * 2 + rand() * .5, d = 6.5 + rand() * 6;
-      a.push({ ox: Math.cos(ang) * d, oz: Math.sin(ang) * d, y: 1.2 + rand() * 3.6, r: .28 + rand() * .34,
-               c: i % 6, ph: rand() * 6.28, sp: .3 + rand() * .3 });
-    }
-    return a;
-  })();
-  function drawSkyScenery(t, gx, gz) {
-    fogK = .55;                                        // they sit far behind the city
-    FLOATERS.forEach(f => {
-      const yy = f.y + (reduced ? 0 : Math.sin(t * f.sp + f.ph) * .3);
-      box(gx + f.ox, gz + f.oz, f.s, f.s, yy, f.s, P.walls[f.c],
-          { rot: f.rot + (reduced ? 0 : t * f.rsp), top: P.walls[f.c], sharp: true, plain: true });
-    });
-    fogK = 0;
-    ORBS.forEach(o => {
-      const yy = o.y + (reduced ? 0 : Math.sin(t * o.sp + o.ph) * .25);
-      const s = px(gx + o.ox, yy, gz + o.oz), r = o.r * cam.s, col = hx(P.walls[o.c]);
-      ctx.save(); ctx.globalCompositeOperation = "lighter";
-      const halo = ctx.createRadialGradient(s[0], s[1], r * .5, s[0], s[1], r * 2.4);
-      halo.addColorStop(0, `rgba(${col},${.35 * P.orbGlow})`); halo.addColorStop(1, `rgba(${col},0)`);
-      ctx.fillStyle = halo; ctx.beginPath(); ctx.arc(s[0], s[1], r * 2.4, 0, Math.PI * 2); ctx.fill();
-      ctx.restore();
-      const body = ctx.createRadialGradient(s[0] - r * .35, s[1] - r * .4, r * .05, s[0], s[1], r);
-      body.addColorStop(0, `rgb(${col.map(v => Math.min(255, v + 70))})`);
-      body.addColorStop(.55, `rgb(${col})`);
-      body.addColorStop(1, `rgb(${col.map(v => (v * .72) | 0)})`);
-      ctx.fillStyle = body; ctx.beginPath(); ctx.arc(s[0], s[1], r, 0, Math.PI * 2); ctx.fill();
-    });
-  }
-
   // sparkle dust drifting up through the whole frame
   const DUST = (() => {
     const rand = rng(909), a = [], hue = ["255,190,225", "170,225,255", "200,180,255", "190,255,220", "255,240,180"];
@@ -1309,7 +1269,6 @@
     ctx.restore();
 
     drawClouds(t, HZ);
-    drawSkyScenery(t, gx, gz);
 
     // --- ground: a dark pool under the city that fades into the far floor ---
     ctx.save(); ctx.translate(gc[0], gc[1]); ctx.scale(1, IY / IX);

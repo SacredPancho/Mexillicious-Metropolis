@@ -47,11 +47,11 @@ are fixed across every township. A new project is a config object, not a modelli
 
 **The sky is part of the engine, not a backdrop colour.** Both renderers draw the same
 sky: a horizon computed from the camera, a gradient that blends into a far floor below it,
-two moons of different sizes, stars, a thin cloud bank on the horizon, plain pastel cubes
-and orbs floating around the city, and sparkle dust. The old ground was a flat disc of
-radius 12.5 that covered most of the frame and hid the sky; it is now a pool of radius 8.4
-that fades into the far floor. Sky scenery carries no data and is placed relative to the
-city centre so it frames the districts at any viewport. See `docs/style-board.html`.
+two moons of different sizes, stars, a thin cloud bank on the horizon, and sparkle dust.
+The old ground was a flat disc of radius 12.5 that covered most of the frame and hid the
+sky; it is now a pool of radius 8.4 that fades into the far floor. Floating cubes and orbs
+from the reference stills were tried and rejected: nothing hangs in the air over the city.
+See `docs/style-board.html`.
 
 **Data comes from the account session feed, not local hooks.** Local hooks only see one
 machine and die when it sleeps. The account feed spans iOS, CLI and cloud.

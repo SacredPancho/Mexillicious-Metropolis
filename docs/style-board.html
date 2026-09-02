@@ -115,21 +115,21 @@
 
   <section id="after">
     <h2>What changed</h2>
-    <p class="sub">Before, a flat purple disc filled the frame and the sky was a strip along the top edge. Now there is a horizon, two moons, drifting scenery, and a dark floor that the districts glow onto.</p>
+    <p class="sub">Before, a flat purple disc filled the frame and the sky was a strip along the top edge. Now there is a horizon, two moons, a cloud bank, and a dark floor that the districts glow onto.</p>
     <div class="pair">
       <figure class="shot"><img src="refs/metropolis-before.jpg" alt="The wall display before: districts on a huge flat purple disc, sky visible only at the top edge"><figcaption><b>Before</b><span>Ground disc radius 12.5, one gradient, 150 stars</span></figcaption></figure>
-      <figure class="shot lead"><img src="refs/metropolis-after.jpg" alt="The wall display after: districts on a dark floor under a night sky with a pink moon, floating pastel cubes and orbs"><figcaption><b>After</b><span>Horizon, moons, floaters, orbs, dust, light pools</span></figcaption></figure>
+      <figure class="shot lead"><img src="refs/metropolis-after.jpg" alt="The wall display after: districts on a dark floor under a night sky with a pink moon, floating pastel cubes and orbs"><figcaption><b>After</b><span>Horizon, moons, clouds, dust, light pools</span></figcaption></figure>
     </div>
     <div class="trio">
       <figure class="shot"><img src="refs/hero-before.jpg" alt="Website hero before, same flat disc"><figcaption><b>Hero before</b></figcaption></figure>
       <figure class="shot"><img src="refs/hero-night.jpg" alt="Website hero after dark: the big moon sits behind the city, clear of the title"><figcaption><b>Hero, night</b><span>moon behind the city</span></figcaption></figure>
-      <figure class="shot"><img src="refs/hero-day.jpg" alt="Website hero by day: blue zenith, pale horizon, lilac floor, one small pale moon"><figcaption><b>Hero, day</b><span>same scenery, no stars</span></figcaption></figure>
+      <figure class="shot"><img src="refs/hero-day.jpg" alt="Website hero by day: blue zenith, pale horizon, lilac floor, one small pale moon"><figcaption><b>Hero, day</b><span>same sky, no stars</span></figcaption></figure>
     </div>
   </section>
 
   <section id="references">
     <h2>The stills that set the look</h2>
-    <p class="sub">Three ideas repeat in all of them: pastel cubes as architecture, a sky with bodies in it, and tiny inhabitants that make the blocks read as huge.</p>
+    <p class="sub">Three ideas repeat in all of them: pastel cubes as architecture, a sky with bodies in it, and tiny inhabitants that make the blocks read as huge. The floating cubes and orbs in the stills were tried and rejected; the sky keeps only the moons, stars and clouds.</p>
     <div class="refs">
       <figure class="ref"><img src="refs/ref-night-plaza.jpg" alt="" onerror="this.parentElement.classList.add('missing')"><div class="slot"><div><code>docs/refs/ref-night-plaza.jpg</code><span>save the still here and it appears</span></div></div><figcaption><b>Night plaza</b>Six pastel cubes on a dark mirror floor. Big pink moon top-left, small yellow moon right, sparkle dust, candy and donuts on the ground, figurines standing on the cubes.</figcaption></figure>
       <figure class="ref"><img src="refs/ref-canyon-road.jpg" alt="" onerror="this.parentElement.classList.add('missing')"><div class="slot"><div><code>docs/refs/ref-canyon-road.jpg</code><span>save the still here and it appears</span></div></div><figcaption><b>Canyon road</b>The daytime variant. Lilac sky, cumulus, stone cubes floating overhead, pastel orbs on poles, ring pads along a road, one small figure on the centre line.</figcaption></figure>
@@ -145,7 +145,7 @@
 
   <section id="palette">
     <h2>Two darks, six pastels</h2>
-    <p class="sub">The darks are ground and sky. The pastels are only ever emitted light: walls, moons, orbs, floaters. Nothing is painted pastel and then lit. These are the night palette values in <code>PALETTES.night</code>.</p>
+    <p class="sub">The darks are ground and sky. The pastels are only ever emitted light: walls, moons, the horizon glow. Nothing is painted pastel and then lit. These are the night palette values in <code>PALETTES.night</code>.</p>
     <div class="swatches">
       <div class="sw"><i style="background:#06051a"></i><b>Zenith</b><code>#06051A</code><small>skyTop</small></div>
       <div class="sw"><i style="background:#1a1140"></i><b>Sky</b><code>#1A1140</code><small>skyMid</small></div>
@@ -172,11 +172,9 @@
       <div><dt>Moons</dt><dd>Two, never the same size, from <code>P.moons</code>: a big pink one with four faint maria and a small butter one. Each has an additive halo. They are drawn before the floor so they can set behind it.</dd></div>
       <div><dt>Glow band</dt><dd>An additive pink band centred on the horizon, 16% of the height above it and 14% below, peaking at 22% opacity. It is what softens the line and lights the floor near the edge.</dd></div>
       <div><dt>Clouds</dt><dd>Three bands of flattened radial blobs hugging the horizon from above, at 16 to 46% opacity, drifting slowly. Thin enough that the moon still reads through them.</dd></div>
-      <div><dt>Floaters</dt><dd>Six plain cubes from <code>FLOATERS</code>, placed in world space relative to the city centre so they frame it at any viewport. They use the wall colours, so at night they glow and get halos like everything lit from within. <code>plain: true</code> keeps the cornice and pilasters off them.</dd></div>
-      <div><dt>Orbs</dt><dd>Ten pastel spheres in a ring six to twelve units out, one to five units up, with an offset highlight and an additive halo. They bob on their own phase.</dd></div>
       <div><dt>Ground</dt><dd>One elliptical pool, radius 8.4, solid to 58% then fading to transparent over the far floor. Under it, each district lays its accent on the floor at 20% opacity, additive.<span class="why">Fading the pool is what removed the disc edge that used to cut the frame in half.</span></dd></div>
       <div><dt>Dust</dt><dd>170 pastel points drifting upward through the whole frame, drawn after the solids so they sit in the air in front of the city. Off in the day palette apart from a trace.</dd></div>
-      <div><dt>Day</dt><dd>Same code, different keys. Blue zenith, pale horizon at 28% glow, lilac far floor, one small pale moon, no stars, orbs and dust turned down.</dd></div>
+      <div><dt>Day</dt><dd>Same code, different keys. Blue zenith, pale horizon at 28% glow, lilac far floor, one small pale moon, no stars, dust turned down.</dd></div>
     </dl>
   </section>
 
@@ -198,9 +196,9 @@
     <p class="sub">Use with the three stills as a moodboard. It names the same rules the renderer follows, so new frames stay on the board.</p>
     <div class="promptbox">
       <button class="copy" type="button" id="copyBtn">COPY</button>
-      <pre id="promptText">Miniature pastel city at night made of glowing translucent sugar-cube blocks in pink, mint, butter yellow, ice blue and lilac, arranged on a dark slightly reflective floor. Tiny toy astronaut figurines walk between the blocks. Night sky with a large soft pink moon upper left and a small yellow moon on the right, scattered stars, floating pastel spheres and slowly tumbling cubes, a thin band of lilac clouds at the horizon, drifting sparkle dust. Each block emits its own colour with a pool of light beneath it. Matte tactile textures, cinematic wide shot, 21:9, shallow depth of field, stop-motion diorama feel.</pre>
+      <pre id="promptText">Miniature pastel city at night made of glowing translucent sugar-cube blocks in pink, mint, butter yellow, ice blue and lilac, arranged on a dark slightly reflective floor. Tiny toy astronaut figurines walk between the blocks. Night sky with a large soft pink moon upper left and a small yellow moon on the right, scattered stars, a thin band of lilac clouds at the horizon, drifting sparkle dust. Nothing floating in the air. Each block emits its own colour with a pool of light beneath it. Matte tactile textures, cinematic wide shot, 21:9, shallow depth of field, stop-motion diorama feel.</pre>
     </div>
-    <p class="note">Negative direction: no neon signage, no chrome, no photoreal humans, no single-colour rim light, no black void behind the city.</p>
+    <p class="note">Negative direction: no floating cubes or spheres, no neon signage, no chrome, no photoreal humans, no single-colour rim light, no black void behind the city.</p>
   </section>
 </div>
 
