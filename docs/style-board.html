@@ -1,0 +1,214 @@
+<title>Metropolis Style Board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Archivo:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap">
+
+<style>
+  /* Same token structure as data-model.html: light is the base, dark redefines
+     tokens only. The board's own colours (the city palette) are literals on purpose:
+     they are the subject, not the chrome. */
+  :root{
+    --bg:#f6f7fb; --surface:#ffffff; --surface-2:#eef0f7; --line:#dde1ed; --line-soft:#e8ebf3;
+    --ink:#141726; --ink-2:#4a5169; --ink-3:#767d95; --code-bg:#eceff7;
+    --accent:#8a4fb3;
+    --display:"Bricolage Grotesque","Trebuchet MS",system-ui,sans-serif;
+    --body:"Archivo","Helvetica Neue",Arial,sans-serif;
+    --mono:"JetBrains Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --bg:#0d1019; --surface:#151928; --surface-2:#1b2031; --line:#293049; --line-soft:#212739;
+      --ink:#e8eaf4; --ink-2:#a8b0c9; --ink-3:#757d99; --code-bg:#1c2233; --accent:#c7a6ff;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0d1019; --surface:#151928; --surface-2:#1b2031; --line:#293049; --line-soft:#212739;
+    --ink:#e8eaf4; --ink-2:#a8b0c9; --ink-3:#757d99; --code-bg:#1c2233; --accent:#c7a6ff;
+  }
+
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.62;-webkit-font-smoothing:antialiased}
+  .page{max-width:1040px;margin:0 auto;padding:38px 22px 72px}
+  a{color:var(--accent)}
+  h1,h2,h3{font-family:var(--display);margin:0;text-wrap:balance}
+  p{margin:0}
+  code{font-family:var(--mono);font-size:.86em;background:var(--code-bg);padding:1px 5px;border-radius:3px}
+
+  .mast{border-bottom:1px solid var(--line);padding-bottom:22px;margin-bottom:30px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px 32px;align-items:end}
+  .kicker{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);margin-bottom:8px}
+  h1{font-weight:700;font-size:clamp(30px,4.4vw,44px);line-height:1.04;letter-spacing:-.03em}
+  .mast .lede{color:var(--ink-2);max-width:56ch;margin-top:10px}
+  .mast .files{font-family:var(--mono);font-size:12px;color:var(--ink-3);line-height:1.9;text-align:right}
+
+  section{margin-top:52px}
+  h2{font-weight:700;font-size:clamp(21px,2.6vw,27px);letter-spacing:-.02em;margin-bottom:6px}
+  .sub{color:var(--ink-2);max-width:64ch;margin-bottom:18px}
+
+  /* before / after */
+  .pair{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .shot{border:1px solid var(--line);border-radius:6px;overflow:hidden;background:var(--surface)}
+  .shot img{display:block;width:100%;aspect-ratio:16/10;object-fit:cover}
+  .shot figcaption{display:flex;justify-content:space-between;gap:12px;padding:9px 12px;font-size:13px;color:var(--ink-2)}
+  .shot figcaption b{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);font-weight:500;white-space:nowrap}
+  .shot.lead img{aspect-ratio:16/10}
+  .trio{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:14px}
+  .trio .shot img{aspect-ratio:16/10}
+
+  /* references */
+  .refs{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  .ref{border:1px solid var(--line);border-radius:6px;overflow:hidden;background:var(--surface)}
+  .ref img{display:block;width:100%;aspect-ratio:21/9;object-fit:cover}
+  .ref.missing img{display:none}
+  .ref .slot{display:none;aspect-ratio:21/9;place-items:center;text-align:center;padding:14px;
+    background:linear-gradient(160deg,#1a1140,#4b2b70 60%,#8e5fb0)}
+  .ref.missing .slot{display:grid}
+  .ref .slot code{background:rgba(255,255,255,.12);color:#fff}
+  .ref .slot span{display:block;color:#c7b3ff;font-size:12px;margin-top:6px}
+  .ref figcaption{padding:10px 12px 12px;font-size:13px;color:var(--ink-2)}
+  .ref figcaption b{display:block;font-family:var(--display);font-weight:700;font-size:15px;color:var(--ink);margin-bottom:2px}
+  .harbor{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:14px}
+  .harbor .ref img{aspect-ratio:18/13}
+
+  /* palette */
+  .swatches{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:10px}
+  .sw{border:1px solid var(--line);border-radius:6px;overflow:hidden;background:var(--surface)}
+  .sw i{display:block;height:64px}
+  .sw b{display:block;font-family:var(--display);font-weight:700;font-size:14px;padding:7px 10px 0}
+  .sw code{display:block;background:none;padding:1px 10px 0;color:var(--ink-3);font-size:11.5px}
+  .sw small{display:block;font-size:12px;color:var(--ink-2);padding:2px 10px 9px;line-height:1.35}
+
+  /* rules */
+  dl.rules{margin:0;border-top:1px solid var(--line)}
+  dl.rules>div{display:grid;grid-template-columns:150px minmax(0,1fr);gap:4px 20px;padding:12px 0;border-bottom:1px solid var(--line)}
+  dl.rules dt{font-family:var(--display);font-weight:700;font-size:15px;color:var(--ink)}
+  dl.rules dd{margin:0;color:var(--ink-2)}
+  dl.rules dd code{font-size:.84em}
+  dl.rules dd .why{display:block;color:var(--ink-3);font-size:13.5px;margin-top:2px}
+
+  .keep{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+  .keep div{padding:12px 14px;border:1px solid var(--line);border-radius:6px;background:var(--surface);font-size:14px;color:var(--ink-2)}
+  .keep b{display:block;font-family:var(--display);font-weight:700;color:var(--ink);margin-bottom:3px}
+
+  .promptbox{position:relative;border:1px solid var(--line);border-radius:6px;background:var(--surface);padding:16px 16px 14px;max-width:78ch}
+  .promptbox pre{margin:0;white-space:pre-wrap;font-family:var(--mono);font-size:13px;line-height:1.6;color:var(--ink)}
+  .promptbox .copy{position:absolute;top:12px;right:12px;font-family:var(--mono);font-size:11px;letter-spacing:.06em;padding:5px 10px;border-radius:3px;
+    border:1px solid var(--line);background:var(--surface-2);color:var(--ink);cursor:pointer}
+  .promptbox .copy:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .note{margin-top:12px;font-size:13.5px;color:var(--ink-3);max-width:70ch}
+
+  @media (max-width:760px){
+    .mast{grid-template-columns:1fr}.mast .files{text-align:left}
+    .pair,.trio,.refs,.harbor{grid-template-columns:1fr}
+    dl.rules>div{grid-template-columns:1fr}
+  }
+</style>
+
+<div class="page">
+  <header class="mast">
+    <div>
+      <p class="kicker">Style board · Metropolis</p>
+      <h1>The city, under a sky</h1>
+      <p class="lede">Reference stills, the palette pulled from them, and the rules the renderer now follows. Both prototypes share the sky code; the night palette is the primary look.</p>
+    </div>
+    <div class="files">prototypes/metropolis.html<br>prototypes/hero.html<br>docs/refs/</div>
+  </header>
+
+  <section id="after">
+    <h2>What changed</h2>
+    <p class="sub">Before, a flat purple disc filled the frame and the sky was a strip along the top edge. Now there is a horizon, two moons, drifting scenery, and a dark floor that the districts glow onto.</p>
+    <div class="pair">
+      <figure class="shot"><img src="refs/metropolis-before.jpg" alt="The wall display before: districts on a huge flat purple disc, sky visible only at the top edge"><figcaption><b>Before</b><span>Ground disc radius 12.5, one gradient, 150 stars</span></figcaption></figure>
+      <figure class="shot lead"><img src="refs/metropolis-after.jpg" alt="The wall display after: districts on a dark floor under a night sky with a pink moon, floating pastel cubes and orbs"><figcaption><b>After</b><span>Horizon, moons, floaters, orbs, dust, light pools</span></figcaption></figure>
+    </div>
+    <div class="trio">
+      <figure class="shot"><img src="refs/hero-before.jpg" alt="Website hero before, same flat disc"><figcaption><b>Hero before</b></figcaption></figure>
+      <figure class="shot"><img src="refs/hero-night.jpg" alt="Website hero after dark: the big moon sits behind the city, clear of the title"><figcaption><b>Hero, night</b><span>moon behind the city</span></figcaption></figure>
+      <figure class="shot"><img src="refs/hero-day.jpg" alt="Website hero by day: blue zenith, pale horizon, lilac floor, one small pale moon"><figcaption><b>Hero, day</b><span>same scenery, no stars</span></figcaption></figure>
+    </div>
+  </section>
+
+  <section id="references">
+    <h2>The stills that set the look</h2>
+    <p class="sub">Three ideas repeat in all of them: pastel cubes as architecture, a sky with bodies in it, and tiny inhabitants that make the blocks read as huge.</p>
+    <div class="refs">
+      <figure class="ref"><img src="refs/ref-night-plaza.jpg" alt="" onerror="this.parentElement.classList.add('missing')"><div class="slot"><div><code>docs/refs/ref-night-plaza.jpg</code><span>save the still here and it appears</span></div></div><figcaption><b>Night plaza</b>Six pastel cubes on a dark mirror floor. Big pink moon top-left, small yellow moon right, sparkle dust, candy and donuts on the ground, figurines standing on the cubes.</figcaption></figure>
+      <figure class="ref"><img src="refs/ref-canyon-road.jpg" alt="" onerror="this.parentElement.classList.add('missing')"><div class="slot"><div><code>docs/refs/ref-canyon-road.jpg</code><span>save the still here and it appears</span></div></div><figcaption><b>Canyon road</b>The daytime variant. Lilac sky, cumulus, stone cubes floating overhead, pastel orbs on poles, ring pads along a road, one small figure on the centre line.</figcaption></figure>
+      <figure class="ref"><img src="refs/ref-cube-field.jpg" alt="" onerror="this.parentElement.classList.add('missing')"><div class="slot"><div><code>docs/refs/ref-cube-field.jpg</code><span>save the still here and it appears</span></div></div><figcaption><b>Cube field</b>Tumbling glowing cubes in a starfield above a row of pedestal cubes. Each pedestal holds one thing: a figure, a plant, a small stack of objects.</figcaption></figure>
+    </div>
+    <p class="note">The three stills arrived as chat attachments, not files, so they are not in the repository yet. Save them under the names shown and they render in place.</p>
+    <div class="harbor">
+      <figure class="ref"><img src="refs/harbor-01.jpg" alt="Low-poly harbor town with a lighthouse on a flat navy backdrop, from the reference clip"><figcaption><b>Harbor clip, frame 1</b>The 3D dashboard the clip shows. Nothing behind the town, so it reads as a widget, not a place.</figcaption></figure>
+      <figure class="ref"><img src="refs/harbor-02.jpg" alt="Harbor town from a higher angle, magenta water"><figcaption><b>Harbor clip, frame 2</b>One magenta does water, pins, labels and rim light. Nothing can be the important thing.</figcaption></figure>
+      <figure class="ref"><img src="refs/harbor-03.jpg" alt="Close view of the harbor houses, all lit the same"><figcaption><b>Harbor clip, frame 3</b>Buildings are lit, not glowing. Without light on the ground there is no night.</figcaption></figure>
+    </div>
+  </section>
+
+  <section id="palette">
+    <h2>Two darks, six pastels</h2>
+    <p class="sub">The darks are ground and sky. The pastels are only ever emitted light: walls, moons, orbs, floaters. Nothing is painted pastel and then lit. These are the night palette values in <code>PALETTES.night</code>.</p>
+    <div class="swatches">
+      <div class="sw"><i style="background:#06051a"></i><b>Zenith</b><code>#06051A</code><small>skyTop</small></div>
+      <div class="sw"><i style="background:#1a1140"></i><b>Sky</b><code>#1A1140</code><small>skyMid</small></div>
+      <div class="sw"><i style="background:#4b2b70"></i><b>Low sky</b><code>#4B2B70</code><small>skyLow</small></div>
+      <div class="sw"><i style="background:#8e5fb0"></i><b>Horizon</b><code>#8E5FB0</code><small>horizon, plus a pink glow band</small></div>
+      <div class="sw"><i style="background:#120d2c"></i><b>Far floor</b><code>#120D2C</code><small>floorFar, fades to floorDeep</small></div>
+      <div class="sw"><i style="background:#171130"></i><b>Ground</b><code>#171130</code><small>the pool under the city</small></div>
+      <div class="sw"><i style="background:#ff9ecb"></i><b>Pink</b><code>#FF9ECB</code><small>walls[0], big moon</small></div>
+      <div class="sw"><i style="background:#7ef0d0"></i><b>Mint</b><code>#7EF0D0</code><small>walls[1]</small></div>
+      <div class="sw"><i style="background:#ffe08a"></i><b>Butter</b><code>#FFE08A</code><small>walls[2], small moon</small></div>
+      <div class="sw"><i style="background:#8fd4ff"></i><b>Ice</b><code>#8FD4FF</code><small>walls[3]</small></div>
+      <div class="sw"><i style="background:#c7a6ff"></i><b>Lilac</b><code>#C7A6FF</code><small>walls[4], clouds</small></div>
+      <div class="sw"><i style="background:#ffb59a"></i><b>Peach</b><code>#FFB59A</code><small>walls[5]</small></div>
+    </div>
+  </section>
+
+  <section id="rules">
+    <h2>Rules of the sky</h2>
+    <p class="sub">What the renderer does now, in draw order, so the real build keeps matching it.</p>
+    <dl class="rules">
+      <div><dt>Horizon</dt><dd>A screen-space line <code>HZ</code>, placed just above the top of the ground pool and clamped between 22% and 78% of the height. Everything about the sky hangs off it.<span class="why">The horizon is what makes it a sky instead of a black room.</span></dd></div>
+      <div><dt>Gradient</dt><dd>Zenith to sky to low sky to the horizon colour, then a soft 3.5% blend into the far floor, which darkens toward the bottom edge.</dd></div>
+      <div><dt>Stars</dt><dd>380 in the top 82% of the frame, culled below the horizon. Half white, the rest tinted pink, ice or butter. They twinkle unless reduced motion is on.</dd></div>
+      <div><dt>Moons</dt><dd>Two, never the same size, from <code>P.moons</code>: a big pink one with four faint maria and a small butter one. Each has an additive halo. They are drawn before the floor so they can set behind it.</dd></div>
+      <div><dt>Glow band</dt><dd>An additive pink band centred on the horizon, 16% of the height above it and 14% below, peaking at 22% opacity. It is what softens the line and lights the floor near the edge.</dd></div>
+      <div><dt>Clouds</dt><dd>Three bands of flattened radial blobs hugging the horizon from above, at 16 to 46% opacity, drifting slowly. Thin enough that the moon still reads through them.</dd></div>
+      <div><dt>Floaters</dt><dd>Six plain cubes from <code>FLOATERS</code>, placed in world space relative to the city centre so they frame it at any viewport. They use the wall colours, so at night they glow and get halos like everything lit from within. <code>plain: true</code> keeps the cornice and pilasters off them.</dd></div>
+      <div><dt>Orbs</dt><dd>Ten pastel spheres in a ring six to twelve units out, one to five units up, with an offset highlight and an additive halo. They bob on their own phase.</dd></div>
+      <div><dt>Ground</dt><dd>One elliptical pool, radius 8.4, solid to 58% then fading to transparent over the far floor. Under it, each district lays its accent on the floor at 20% opacity, additive.<span class="why">Fading the pool is what removed the disc edge that used to cut the frame in half.</span></dd></div>
+      <div><dt>Dust</dt><dd>170 pastel points drifting upward through the whole frame, drawn after the solids so they sit in the air in front of the city. Off in the day palette apart from a trace.</dd></div>
+      <div><dt>Day</dt><dd>Same code, different keys. Blue zenith, pale horizon at 28% glow, lilac far floor, one small pale moon, no stars, orbs and dust turned down.</dd></div>
+    </dl>
+  </section>
+
+  <section id="kept">
+    <h2>Deliberately not touched</h2>
+    <p class="sub">The style board is about the world around the districts. The districts themselves are governed by the hard rules in <code>CLAUDE.md</code>.</p>
+    <div class="keep">
+      <div><b>District kits</b>Every zócalo, stadium, control yard and panadería is still hand-composed from footprints. No cubes replaced buildings.</div>
+      <div><b>Plinths and seams</b>Borders stay physical. The only new thing under a district is its light pool.</div>
+      <div><b>Camera, sun, scale</b>Unchanged. The horizon is computed from the camera, not the other way round.</div>
+      <div><b>No dependencies</b>Still one file per renderer, Canvas 2D, Google Fonts only.</div>
+      <div><b>Cadets</b>Same suits, same walks, same faces when a district needs you.</div>
+      <div><b>Bloom and grain</b>The composite pass is the same. The sky just gives it more to bloom.</div>
+    </div>
+  </section>
+
+  <section id="prompt">
+    <h2>Krea prompt for new stills</h2>
+    <p class="sub">Use with the three stills as a moodboard. It names the same rules the renderer follows, so new frames stay on the board.</p>
+    <div class="promptbox">
+      <button class="copy" type="button" id="copyBtn">COPY</button>
+      <pre id="promptText">Miniature pastel city at night made of glowing translucent sugar-cube blocks in pink, mint, butter yellow, ice blue and lilac, arranged on a dark slightly reflective floor. Tiny toy astronaut figurines walk between the blocks. Night sky with a large soft pink moon upper left and a small yellow moon on the right, scattered stars, floating pastel spheres and slowly tumbling cubes, a thin band of lilac clouds at the horizon, drifting sparkle dust. Each block emits its own colour with a pool of light beneath it. Matte tactile textures, cinematic wide shot, 21:9, shallow depth of field, stop-motion diorama feel.</pre>
+    </div>
+    <p class="note">Negative direction: no neon signage, no chrome, no photoreal humans, no single-colour rim light, no black void behind the city.</p>
+  </section>
+</div>
+
+<script>
+  const btn = document.getElementById("copyBtn"), txt = document.getElementById("promptText");
+  if (btn && navigator.clipboard) {
+    btn.addEventListener("click", () => {
+      navigator.clipboard.writeText(txt.textContent).then(() => { btn.textContent = "COPIED"; setTimeout(() => { btn.textContent = "COPY"; }, 1600); });
+    });
+  } else if (btn) btn.hidden = true;
+</script>

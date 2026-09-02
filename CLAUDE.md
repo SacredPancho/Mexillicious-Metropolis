@@ -12,6 +12,7 @@ Repo: `SacredPancho/Mexillicious-Metropolis`
 - `prototypes/hero.html` — public, read-only website hero. Daylight scale-model look.
 - `prototypes/metropolis.html` — private wall/control view. Night look, live-data shaped.
 - `docs/data-model.html` — session feed → township/cadet field mapping.
+- `docs/style-board.html` — reference stills, palette, and the sky rules both renderers share.
 - `README.md` — every design decision and why, plus the open problems.
 
 ## Three targets, one engine

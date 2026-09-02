@@ -256,7 +256,7 @@
   const PALETTES = {
     day: {
       night: false, emissiveWalls: false, bloom: [.13, .08], starAlpha: 0, bokehAlpha: .5,
-      skyTop: "#b9cef1", skyMid: "#dcd2ee", skyLow: "#f7e2e5",
+      skyTop: "#7ea9ea", skyMid: "#b7c5ee", skyLow: "#e4dbef",
       haze: [225, 214, 236], hazeAmt: .34, amb: [.40, .52],
       ground: "#bdb5dd", plinth: "#cfc7e8", paved: "#e0d9f2",
       walls: ["#f2a8c2", "#86ddc6", "#ffd98a", "#9ec9f2", "#c3aef0", "#ffb79c"],
@@ -265,11 +265,16 @@
       glass: "#bfe2f7", leaf: "#8fd9b4", leafTop: "#a6e6c6",
       shadow: "rgba(116,100,168,0.17)", win: "#fff8e6", winLit: false,
       cloud: "rgba(255,246,252,0.42)",
-      cloudBody: "255,253,255", cloudLit: "255,228,242", cloudDeep: "186,180,222"
+      cloudBody: "255,253,255", cloudLit: "255,228,242", cloudDeep: "186,180,222",
+      // sky with a horizon: the far floor sits below it, the ground pool fades into it
+      horizon: "#f6ecf4", horizonGlow: "255,236,244", horizonAmt: .28,
+      floorFar: "#b6aed6", floorDeep: "#a99fcd", groundFade: "rgba(182,174,214,0)",
+      moons: [{ x: .80, y: .20, r: .05, c: "#fffdf3", hi: "#ffffff", lo: "#e9e2d4", halo: "255,250,235", glow: .35 }],
+      dustAlpha: .15, orbGlow: .3, poolAmt: .4
     },
     night: {
       night: true, emissiveWalls: true, bloom: [.30, .15], starAlpha: 1, bokehAlpha: 1,
-      skyTop: "#0a0818", skyMid: "#1b1236", skyLow: "#3a1f4a",
+      skyTop: "#06051a", skyMid: "#1a1140", skyLow: "#4b2b70",
       haze: [40, 26, 68], hazeAmt: .60, amb: [.44, .62],
       ground: "#171130", plinth: "#241a42", paved: "#2c2050",
       walls: ["#ff9ecb", "#7ef0d0", "#ffe08a", "#8fd4ff", "#c7a6ff", "#ffb59a"],
@@ -278,7 +283,12 @@
       glass: "#8fd4ff", leaf: "#7ee0b4", leafTop: "#96ecc6",
       shadow: "rgba(4,2,14,0.44)", win: "#fff3d0", winLit: true,
       cloud: "rgba(120,84,168,0.30)",
-      cloudBody: "92,56,132", cloudLit: "236,158,220", cloudDeep: "22,12,40"
+      cloudBody: "92,56,132", cloudLit: "236,158,220", cloudDeep: "22,12,40",
+      horizon: "#8e5fb0", horizonGlow: "255,158,203", horizonAmt: 1,
+      floorFar: "#120d2c", floorDeep: "#07061a", groundFade: "rgba(18,13,44,0)",
+      moons: [{ x: .15, y: .28, r: .14, c: "#ffa7e0", hi: "#ffd8f1", lo: "#e07cc0", halo: "255,167,224", glow: 1, spots: true },
+              { x: .80, y: .30, r: .045, c: "#fff2a0", hi: "#fffbd6", lo: "#e9d070", halo: "255,242,160", glow: .8 }],
+      dustAlpha: .8, orbGlow: 1, poolAmt: 1
     }
   };
   // the city keeps the viewer's hours: lit by day, glowing after dark
@@ -440,7 +450,7 @@
       if (nn[0] + nn[2] <= 0) continue;
       face([[a[0], y0, a[1]], [b[0], y0, b[1]], [b[0], y0 + h, b[1]], [a[0], y0 + h, a[1]]],
            shade(rgb, nn), shade(dim(rgb, lit ? .80 : .62), nn));
-      if (h > .62) {                               // base course and cornice
+      if (h > .62 && !opt.plain) {                 // base course and cornice
         const e = .012;
         const ax = a[0] + nn[0] * e, az = a[1] + nn[2] * e;
         const bx2 = b[0] + nn[0] * e, bz2 = b[1] + nn[2] * e;
@@ -450,7 +460,7 @@
              shade(dim(rgb, 1.14), nn), shade(dim(rgb, .92), nn));
       }
       const edgeLen = Math.hypot(b[0] - a[0], b[1] - a[1]);
-      if (h > .95 && edgeLen > .34) {              // pilasters break up a blank wall
+      if (h > .95 && edgeLen > .34 && !opt.plain) { // pilasters break up a blank wall
         const e2 = .010;
         for (let k = 1; k <= 2; k++) {
           const u = k / 3, hw2 = .026 / edgeLen;
@@ -1026,43 +1036,48 @@
   })();
   let grainPat = null;
 
+  // a cloud bank hugs the horizon, flattened the way clouds read at eye level
   const CLOUDS = (() => {
     const rand = rng(2024), a = [];
     for (let band = 0; band < 3; band++) {
-      const base = .30 + band * .15, n = 13 + band * 4;
+      const n = 5 + band * 2;
       for (let i = 0; i < n; i++)
-        a.push({ x: rand() * 1.25 - .12, y: base + (rand() - .5) * .10,
-                 r: .06 + rand() * .13 + band * .03, band,
-                 o: .45 + rand() * .55, sp: .0016 + band * .0013 });
+        a.push({ x: rand() * 1.25 - .12, dy: -(.005 + rand() * .07) - band * .028,
+                 r: .05 + rand() * .09 + band * .02, band,
+                 o: .16 + rand() * .30, sp: .0012 + band * .0010 });
     }
-    return a.sort((m, n2) => m.band - n2.band);
+    return a.sort((m, n2) => n2.band - m.band);       // far bands first
   })();
 
-  function drawClouds(t) {
+  function drawClouds(t, HZ) {
     ctx.save();
     CLOUDS.forEach(c => {
       const x = (((c.x + t * c.sp) % 1.4) + 1.4) % 1.4 - .2;
-      const cx2 = x * W, cy2 = c.y * H, rr = c.r * Math.max(W, H) * .82;
-      const body = ctx.createRadialGradient(cx2, cy2, 0, cx2, cy2, rr);
-      body.addColorStop(0, `rgba(${P.cloudBody},${.80 * c.o})`);
-      body.addColorStop(.52, `rgba(${P.cloudBody},${.50 * c.o})`);
+      const rr = c.r * W;
+      ctx.save(); ctx.translate(x * W, HZ + c.dy * H); ctx.scale(1, .38);
+      const body = ctx.createRadialGradient(0, 0, 0, 0, 0, rr);
+      body.addColorStop(0, `rgba(${P.cloudBody},${.85 * c.o})`);
+      body.addColorStop(.55, `rgba(${P.cloudBody},${.45 * c.o})`);
       body.addColorStop(1, `rgba(${P.cloudDeep},0)`);
       ctx.fillStyle = body;
-      ctx.beginPath(); ctx.arc(cx2, cy2, rr, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(0, 0, rr, 0, Math.PI * 2); ctx.fill();
       // lit cap, offset toward the light
-      const lx = cx2 - rr * .22, ly = cy2 - rr * .30, lr = rr * .62;
+      const lx = -rr * .2, ly = -rr * .45, lr = rr * .6;
       const cap = ctx.createRadialGradient(lx, ly, 0, lx, ly, lr);
-      cap.addColorStop(0, `rgba(${P.cloudLit},${.50 * c.o})`);
+      cap.addColorStop(0, `rgba(${P.cloudLit},${.55 * c.o})`);
       cap.addColorStop(1, `rgba(${P.cloudLit},0)`);
       ctx.fillStyle = cap;
       ctx.beginPath(); ctx.arc(lx, ly, lr, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
     });
     ctx.restore();
   }
 
   const STARS = (() => {
     const rand = rng(88), a = [];
-    for (let i = 0; i < 150; i++) a.push([rand(), rand() * .78, rand() * .8 + .2, rand() * 1.4 + .6]);
+    const tint = ["255,255,255", "255,255,255", "255,255,255", "255,190,225", "170,225,255", "255,240,180"];
+    for (let i = 0; i < 380; i++)
+      a.push([rand(), rand() * .82, rand() * .8 + .2, rand() * 1.5 + .6, tint[(rand() * 6) | 0]]);
     return a;
   })();
   const BOKEH = (() => {
@@ -1072,6 +1087,92 @@
                a: .06 + rand() * .16, sp: .004 + rand() * .014 });
     return a;
   })();
+
+  // Two moons, never the same size. Drawn before the floor so they set behind it.
+  function drawMoons(HZ) {
+    (P.moons || []).forEach(m => {
+      const mx = m.x * W, my = m.y * H, r = m.r * H;
+      if (my - r > HZ) return;
+      ctx.save(); ctx.globalCompositeOperation = "lighter";
+      const halo = ctx.createRadialGradient(mx, my, r * .6, mx, my, r * 2.8);
+      halo.addColorStop(0, `rgba(${m.halo},${.50 * m.glow})`);
+      halo.addColorStop(.4, `rgba(${m.halo},${.18 * m.glow})`);
+      halo.addColorStop(1, `rgba(${m.halo},0)`);
+      ctx.fillStyle = halo; ctx.beginPath(); ctx.arc(mx, my, r * 2.8, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+      const body = ctx.createRadialGradient(mx - r * .35, my - r * .35, r * .05, mx, my, r * 1.05);
+      body.addColorStop(0, m.hi); body.addColorStop(.6, m.c); body.addColorStop(1, m.lo);
+      ctx.fillStyle = body; ctx.beginPath(); ctx.arc(mx, my, r, 0, Math.PI * 2); ctx.fill();
+      if (m.spots) {                                   // a few soft maria, never a face
+        ctx.save(); ctx.globalAlpha = .13; ctx.fillStyle = m.lo;
+        [[.28, -.22, .30], [-.30, .18, .22], [.05, .38, .16], [-.12, -.42, .12]].forEach(s => {
+          ctx.beginPath(); ctx.arc(mx + s[0] * r, my + s[1] * r, s[2] * r, 0, Math.PI * 2); ctx.fill();
+        });
+        ctx.restore();
+      }
+    });
+  }
+
+  // Scenery in the sky: tumbling sugar cubes and pastel orbs, placed relative to the
+  // city centre so they frame it at any viewport. They carry no data.
+  const FLOATERS = [
+    [-8.25, 2.25, 3.5, 1.0, 0], [1.35, -8.15, 3.8, .8, 3], [6.9, -7.1, 2.5, .9, 1],
+    [-3.6, 9.4, 1.6, .7, 4], [-3.0, -6.8, 4.2, .6, 2], [12.05, -.95, 1.2, .8, 5]
+  ].map((s, i) => ({ ox: s[0], oz: s[1], y: s[2], s: s[3], c: s[4], ph: i * 1.7,
+                     sp: .22 + (i % 3) * .09, rot: i * .8, rsp: (i % 2 ? 1 : -1) * (.05 + (i % 3) * .02) }));
+  const ORBS = (() => {
+    const rand = rng(303), a = [];
+    for (let i = 0; i < 10; i++) {
+      const ang = i / 10 * Math.PI * 2 + rand() * .5, d = 6.5 + rand() * 6;
+      a.push({ ox: Math.cos(ang) * d, oz: Math.sin(ang) * d, y: 1.2 + rand() * 3.6, r: .28 + rand() * .34,
+               c: i % 6, ph: rand() * 6.28, sp: .3 + rand() * .3 });
+    }
+    return a;
+  })();
+  function drawSkyScenery(t, gx, gz) {
+    fogK = .55;                                        // they sit far behind the city
+    FLOATERS.forEach(f => {
+      const yy = f.y + (reduced ? 0 : Math.sin(t * f.sp + f.ph) * .3);
+      box(gx + f.ox, gz + f.oz, f.s, f.s, yy, f.s, P.walls[f.c],
+          { rot: f.rot + (reduced ? 0 : t * f.rsp), top: P.walls[f.c], sharp: true, plain: true });
+    });
+    fogK = 0;
+    ORBS.forEach(o => {
+      const yy = o.y + (reduced ? 0 : Math.sin(t * o.sp + o.ph) * .25);
+      const s = px(gx + o.ox, yy, gz + o.oz), r = o.r * cam.s, col = hx(P.walls[o.c]);
+      ctx.save(); ctx.globalCompositeOperation = "lighter";
+      const halo = ctx.createRadialGradient(s[0], s[1], r * .5, s[0], s[1], r * 2.4);
+      halo.addColorStop(0, `rgba(${col},${.35 * P.orbGlow})`); halo.addColorStop(1, `rgba(${col},0)`);
+      ctx.fillStyle = halo; ctx.beginPath(); ctx.arc(s[0], s[1], r * 2.4, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+      const body = ctx.createRadialGradient(s[0] - r * .35, s[1] - r * .4, r * .05, s[0], s[1], r);
+      body.addColorStop(0, `rgb(${col.map(v => Math.min(255, v + 70))})`);
+      body.addColorStop(.55, `rgb(${col})`);
+      body.addColorStop(1, `rgb(${col.map(v => (v * .72) | 0)})`);
+      ctx.fillStyle = body; ctx.beginPath(); ctx.arc(s[0], s[1], r, 0, Math.PI * 2); ctx.fill();
+    });
+  }
+
+  // sparkle dust drifting up through the whole frame
+  const DUST = (() => {
+    const rand = rng(909), a = [], hue = ["255,190,225", "170,225,255", "200,180,255", "190,255,220", "255,240,180"];
+    for (let i = 0; i < 170; i++)
+      a.push({ x: rand(), y: rand(), s: .7 + rand() * 1.6, sp: .008 + rand() * .022,
+               sw: rand() * 6.28, c: hue[(rand() * 5) | 0], a: .35 + rand() * .55 });
+    return a;
+  })();
+  function drawDust(t) {
+    if (!P.dustAlpha) return;
+    ctx.save(); ctx.globalCompositeOperation = "lighter";
+    DUST.forEach(d => {
+      const yy = ((d.y - t * d.sp) % 1 + 1) % 1, xx = d.x + Math.sin(t * .4 + d.sw) * .012;
+      const tw = reduced ? .7 : .55 + .45 * Math.sin(t * 2.3 + d.sw);
+      ctx.globalAlpha = d.a * tw * P.dustAlpha;
+      ctx.fillStyle = `rgb(${d.c})`;
+      ctx.beginPath(); ctx.arc(xx * W, yy * H, d.s, 0, Math.PI * 2); ctx.fill();
+    });
+    ctx.restore();
+  }
 
   /* ---------- camera ---------- */
   function frame() {
@@ -1155,19 +1256,46 @@
     setSun(reduced ? 0.9 : 0.9 + Math.sin(t * 0.05) * 0.28);
     shadows.length = 0; puffs.length = 0; glows.length = 0;
 
-    // --- sky ---
+    // --- where the city is, and where the sky meets the floor ---
+    let gx = 0, gz = 0;
+    PROJECTS.forEach(p => { const c = hexCentre(p.q, p.r); gx += c.x; gz += c.z; });
+    gx /= PROJECTS.length; gz /= PROJECTS.length;
+    const gc = px(gx, 0, gz), GR = 8.4;
+    const erx = GR * IX * cam.s, ery = GR * IY * cam.s;
+    const HZ = Math.min(H * .78, Math.max(H * .22, gc[1] - ery - H * .11));   // horizon, screen y
+
+    // --- sky: zenith down to a glowing horizon ---
+    const u = HZ / H;
     const sky = ctx.createLinearGradient(0, 0, 0, H);
-    sky.addColorStop(0, P.skyTop); sky.addColorStop(.62, P.skyMid); sky.addColorStop(1, P.skyLow);
+    sky.addColorStop(0, P.skyTop); sky.addColorStop(u * .5, P.skyMid);
+    sky.addColorStop(Math.max(0, u - .10), P.skyLow); sky.addColorStop(u, P.horizon);
+    sky.addColorStop(Math.min(1, u + .035), P.floorFar); sky.addColorStop(1, P.floorDeep);
     ctx.clearRect(0, 0, W, H);
     ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H);
 
     ctx.save();
     if (P.starAlpha) STARS.forEach(q => {
+      const sy = q[1] * H; if (sy > HZ - 8) return;
       ctx.globalAlpha = P.starAlpha * q[2] * (reduced ? .55 : .35 + .35 * (1 + Math.sin(t * 1.4 + q[0] * 40)) / 2);
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(q[0] * W, q[1] * H, q[3], q[3]);
+      ctx.fillStyle = `rgb(${q[4]})`;
+      ctx.fillRect(q[0] * W, sy, q[3], q[3]);
     });
-    ctx.globalCompositeOperation = "lighter";
+    ctx.restore();
+    drawMoons(HZ);
+
+    // the far floor hides whatever has set below the horizon; its top edge stays soft
+    const f0 = HZ + H * .035;
+    const fl = ctx.createLinearGradient(0, HZ, 0, H);
+    fl.addColorStop(0, `rgba(${hx(P.floorFar)},0)`); fl.addColorStop(.035 / (1 - u), P.floorFar); fl.addColorStop(1, P.floorDeep);
+    ctx.fillStyle = fl; ctx.fillRect(0, HZ, W, H - HZ);
+
+    ctx.save(); ctx.globalCompositeOperation = "lighter";
+    const hg = ctx.createLinearGradient(0, HZ - H * .16, 0, HZ + H * .14);
+    hg.addColorStop(0, `rgba(${P.horizonGlow},0)`);
+    hg.addColorStop(.53, `rgba(${P.horizonGlow},${.22 * P.horizonAmt})`);
+    hg.addColorStop(.62, `rgba(${P.horizonGlow},${.12 * P.horizonAmt})`);
+    hg.addColorStop(1, `rgba(${P.horizonGlow},0)`);
+    ctx.fillStyle = hg; ctx.fillRect(0, HZ - H * .16, W, H * .30);
     BOKEH.forEach(b => {
       const yy = ((b.y - t * b.sp) % 1 + 1) % 1;
       const cxp = b.x * W, cyp = yy * H, rr = b.r * Math.max(.6, cam.s / 46);
@@ -1180,13 +1308,26 @@
     });
     ctx.restore();
 
-    drawClouds(t);
+    drawClouds(t, HZ);
+    drawSkyScenery(t, gx, gz);
 
-    // --- ground ---
-    let gx = 0, gz = 0;
-    PROJECTS.forEach(p => { const c = hexCentre(p.q, p.r); gx += c.x; gz += c.z; });
-    gx /= PROJECTS.length; gz /= PROJECTS.length;
-    face(ngon(gx, gz, 12.5, 40).map(q => [q[0], 0, q[1]]), P.ground);
+    // --- ground: a dark pool under the city that fades into the far floor ---
+    ctx.save(); ctx.translate(gc[0], gc[1]); ctx.scale(1, IY / IX);
+    const gg = ctx.createRadialGradient(0, 0, 0, 0, 0, erx);
+    gg.addColorStop(0, P.ground); gg.addColorStop(.58, P.ground); gg.addColorStop(1, P.groundFade);
+    ctx.fillStyle = gg; ctx.beginPath(); ctx.arc(0, 0, erx, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+    // each district puts its own colour on the floor around it
+    ctx.save(); ctx.globalCompositeOperation = "lighter";
+    PROJECTS.forEach(p => {
+      const c = hexCentre(p.q, p.r), s = px(c.x, 0, c.z), pr = R * 2.1 * IX * cam.s, col = hx(p.accent);
+      ctx.save(); ctx.translate(s[0], s[1]); ctx.scale(1, IY / IX);
+      const pool = ctx.createRadialGradient(0, 0, 0, 0, 0, pr);
+      pool.addColorStop(0, `rgba(${col},${.20 * P.poolAmt})`); pool.addColorStop(1, `rgba(${col},0)`);
+      ctx.fillStyle = pool; ctx.beginPath(); ctx.arc(0, 0, pr, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    });
+    ctx.restore();
 
     // --- solids ---
     const solids = [];
@@ -1260,6 +1401,8 @@
       ctx.beginPath(); ctx.arc(base[0], base[1], 3.4 * cam.s, 0, Math.PI * 2); ctx.fill();
     });
     ctx.restore();
+
+    drawDust(t);
 
     // --- district labels, pushed outward onto open ground ---
     ctx.save();

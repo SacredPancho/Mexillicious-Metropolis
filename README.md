@@ -18,6 +18,8 @@ Repo: `SacredPancho/Mexillicious-Metropolis`. Local working copy lives at
   no backend, no network calls. Drop `.hero` + the script into a page and delete the notes
   block. Follows the visitor's colour scheme; force it with `data-theme` on the root.
 - `docs/data-model.html` — field-by-field mapping from the session feed to what you see.
+- `docs/style-board.html` — the reference stills, the palette pulled from them, and the rules
+  the sky follows. Before/after captures live in `docs/refs/`.
 
 Both are also published as artifacts:
 - Renderer — https://claude.ai/code/artifact/20d0cb6a-2fbf-4db2-933c-c09faccaa3e1
@@ -42,6 +44,14 @@ ring is hover/alert state only.
 **Themes vary on five knobs, nothing else.** Accent hue, prop kit, layout rule, ground
 tint, cadet behaviour. Camera, sun, scale rule, material library and silhouette grammar
 are fixed across every township. A new project is a config object, not a modelling session.
+
+**The sky is part of the engine, not a backdrop colour.** Both renderers draw the same
+sky: a horizon computed from the camera, a gradient that blends into a far floor below it,
+two moons of different sizes, stars, a thin cloud bank on the horizon, plain pastel cubes
+and orbs floating around the city, and sparkle dust. The old ground was a flat disc of
+radius 12.5 that covered most of the frame and hid the sky; it is now a pool of radius 8.4
+that fades into the far floor. Sky scenery carries no data and is placed relative to the
+city centre so it frames the districts at any viewport. See `docs/style-board.html`.
 
 **Data comes from the account session feed, not local hooks.** Local hooks only see one
 machine and die when it sleeps. The account feed spans iOS, CLI and cloud.
