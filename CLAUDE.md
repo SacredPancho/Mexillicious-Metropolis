@@ -23,6 +23,37 @@ Repo: `SacredPancho/Mexillicious-Metropolis`
 | Distance | 3 m | 40 cm | 40 cm, phone-first |
 | Infra | Mac mini, always on | laptop / phone | none |
 
+## What becomes a township
+
+**A township is a project, not a session.** The project registry is the source of truth;
+the session feed is decoration layered on top of it. A session appears in the city only
+when it matches a declared project. A one-off session — a carousel bug, a competitive
+analysis, a throwaway question — is not a project and is not rendered anywhere. There is
+no catch-all district.
+
+A project declares how sessions find it:
+
+```js
+{
+  id: "mexillicious-social-calendar",
+  name: "Mexillicious Social Calendar",
+  kit: "plaza", accent: "#c9542f",
+  match: {
+    repos: ["SacredPancho/latino-social-calendar"],
+    paths: ["~/Documents/_MEXILLICIOUS/AI/latino-social-calendar"]
+  }
+}
+```
+
+Cloud sessions match on `repos` (from `session_context.sources`/`outcomes`); local sessions
+match on `paths` (from `cwd` in `claude agents --json`). Both are attribute matches, so the
+two feeds never have to be joined — which retires the open question about the account feed
+using `session_01…` ids while the local feed uses plain UUIDs. Nothing needs to correlate;
+each side matches the registry independently.
+
+One registry drives all three targets. The hero reads its public copy, the wall and control
+views read the same townships and add live cadets on top.
+
 ## Hard rules
 
 - **Never put session data in `hero.html`.** Session titles, statuses and spend reveal

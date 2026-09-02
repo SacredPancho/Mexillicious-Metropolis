@@ -46,6 +46,16 @@ are fixed across every township. A new project is a config object, not a modelli
 **Data comes from the account session feed, not local hooks.** Local hooks only see one
 machine and die when it sleeps. The account feed spans iOS, CLI and cloud.
 
+## What becomes a township
+
+A township is a **project**, declared by you — not a session, and not derived from the feed.
+Sessions are rendered as cadets only when they match a declared project's `repos` or `paths`.
+Unmatched sessions do not appear at all; there is no Commons and no catch-all district.
+
+This supersedes both earlier attribution decisions. It also removes the need to join the two
+feeds: cloud sessions match a project by repo, local sessions match by working directory, and
+neither has to be correlated with the other.
+
 ## Known problems
 
 0. **First-source attribution is wrong, proven by this project's own session.** The
@@ -65,7 +75,8 @@ machine and die when it sleeps. The account feed spans iOS, CLI and cloud.
 1. **Attribution is missing.** 13 of 14 sessions in the live sample carried no repo field.
    Their titles clearly name projects, but nothing in the feed connects them. Everything
    unmapped lands in a "Commons" district — which is most of the city.
-2. **The two feeds use different session IDs.** The account feed returns `session_01H8kr…`;
+2. ~~**The two feeds use different session IDs.**~~ *Retired — projects match on repo and
+   path attributes, so the two feeds are never joined.*  Original note: The account feed returns `session_01H8kr…`;
    local `claude agents --json` returns a plain UUID. No known join. Until this is settled
    they cannot be merged, so local `cwd` (the one reliable repo signal) is unreachable.
 3. **`usage.cost_usd` is cloud-only.** CLI sessions report no usage block, so spend cannot
