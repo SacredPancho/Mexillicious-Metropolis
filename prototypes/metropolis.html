@@ -264,7 +264,8 @@
       stone: "#ded8ef", grass: "#8fd9b4", grassDark: "#7cc9a3", line: "#ffffff",
       glass: "#bfe2f7", leaf: "#8fd9b4", leafTop: "#a6e6c6",
       shadow: "rgba(116,100,168,0.17)", win: "#fff8e6", winLit: false,
-      cloud: "rgba(255,246,252,0.42)"
+      cloud: "rgba(255,246,252,0.42)",
+      cloudBody: "255,253,255", cloudLit: "255,228,242", cloudDeep: "186,180,222"
     },
     night: {
       night: true, emissiveWalls: true, bloom: [.30, .15], starAlpha: 1, bokehAlpha: 1,
@@ -276,7 +277,8 @@
       stone: "#2a2049", grass: "#5fd3a4", grassDark: "#49b98c", line: "#ffffff",
       glass: "#8fd4ff", leaf: "#7ee0b4", leafTop: "#96ecc6",
       shadow: "rgba(4,2,14,0.44)", win: "#fff3d0", winLit: true,
-      cloud: "rgba(120,84,168,0.30)"
+      cloud: "rgba(120,84,168,0.30)",
+      cloudBody: "92,56,132", cloudLit: "236,158,220", cloudDeep: "22,12,40"
     }
   };
   // the city keeps the viewer's hours: lit by day, glowing after dark
@@ -449,13 +451,30 @@
         face([[ax, y0 + h - .07, az], [bx2, y0 + h - .07, bz2], [bx2, y0 + h, bz2], [ax, y0 + h, az]],
              shade(dim(rgb, 1.14), nn), shade(dim(rgb, .92), nn));
       }
+      const edgeLen = Math.hypot(b[0] - a[0], b[1] - a[1]);
+      if (h > .95 && edgeLen > .34) {              // pilasters break up a blank wall
+        const e2 = .010;
+        for (let k = 1; k <= 2; k++) {
+          const u = k / 3, hw2 = .026 / edgeLen;
+          const p1 = [a[0] + (b[0] - a[0]) * (u - hw2) + nn[0] * e2, a[1] + (b[1] - a[1]) * (u - hw2) + nn[2] * e2];
+          const p2 = [a[0] + (b[0] - a[0]) * (u + hw2) + nn[0] * e2, a[1] + (b[1] - a[1]) * (u + hw2) + nn[2] * e2];
+          face([[p1[0], y0 + .085, p1[1]], [p2[0], y0 + .085, p2[1]],
+                [p2[0], y0 + h - .07, p2[1]], [p1[0], y0 + h - .07, p1[1]]],
+               shade(dim(rgb, 1.10), nn), shade(dim(rgb, .86), nn));
+        }
+      }
       if (opt.win && h > 0.5) {
         const rows = Math.max(1, Math.floor(h / 0.46)), e = 0.014;
-        const ax = a[0] + (b[0] - a[0]) * .15 + nn[0] * e, az = a[1] + (b[1] - a[1]) * .15 + nn[2] * e;
-        const bx = a[0] + (b[0] - a[0]) * .85 + nn[0] * e, bz = a[1] + (b[1] - a[1]) * .85 + nn[2] * e;
+        const panes = Math.max(1, Math.min(4, Math.round(edgeLen / .26)));
         for (let k = 0; k < rows; k++) {
-          const yy = y0 + (k + 0.6) * (h / rows), t = Math.min(0.08, h / rows * 0.28);
-          face([[ax, yy - t, az], [bx, yy - t, bz], [bx, yy + t, bz], [ax, yy + t, az]], wc);
+          const yy = y0 + (k + 0.6) * (h / rows), th = Math.min(0.075, h / rows * 0.26);
+          for (let j = 0; j < panes; j++) {        // individual panes, not one strip
+            const u0 = .14 + (j + .10) * (.72 / panes), u1 = .14 + (j + .90) * (.72 / panes);
+            const ax = a[0] + (b[0] - a[0]) * u0 + nn[0] * e, az = a[1] + (b[1] - a[1]) * u0 + nn[2] * e;
+            const bx = a[0] + (b[0] - a[0]) * u1 + nn[0] * e, bz = a[1] + (b[1] - a[1]) * u1 + nn[2] * e;
+            face([[ax, yy - th, az], [bx, yy - th, bz], [bx, yy + th, bz], [ax, yy + th, az]],
+                 wc, P.winLit ? wc : shade(dim(hx(P.win), .78), nn));
+          }
         }
       }
     }
@@ -912,6 +931,40 @@
   })();
   let grainPat = null;
 
+  const CLOUDS = (() => {
+    const rand = rng(2024), a = [];
+    for (let band = 0; band < 3; band++) {
+      const base = .30 + band * .15, n = 13 + band * 4;
+      for (let i = 0; i < n; i++)
+        a.push({ x: rand() * 1.25 - .12, y: base + (rand() - .5) * .10,
+                 r: .06 + rand() * .13 + band * .03, band,
+                 o: .45 + rand() * .55, sp: .0016 + band * .0013 });
+    }
+    return a.sort((m, n2) => m.band - n2.band);
+  })();
+
+  function drawClouds(t) {
+    ctx.save();
+    CLOUDS.forEach(c => {
+      const x = (((c.x + t * c.sp) % 1.4) + 1.4) % 1.4 - .2;
+      const cx2 = x * W, cy2 = c.y * H, rr = c.r * Math.max(W, H) * .82;
+      const body = ctx.createRadialGradient(cx2, cy2, 0, cx2, cy2, rr);
+      body.addColorStop(0, `rgba(${P.cloudBody},${.80 * c.o})`);
+      body.addColorStop(.52, `rgba(${P.cloudBody},${.50 * c.o})`);
+      body.addColorStop(1, `rgba(${P.cloudDeep},0)`);
+      ctx.fillStyle = body;
+      ctx.beginPath(); ctx.arc(cx2, cy2, rr, 0, Math.PI * 2); ctx.fill();
+      // lit cap, offset toward the light
+      const lx = cx2 - rr * .22, ly = cy2 - rr * .30, lr = rr * .62;
+      const cap = ctx.createRadialGradient(lx, ly, 0, lx, ly, lr);
+      cap.addColorStop(0, `rgba(${P.cloudLit},${.50 * c.o})`);
+      cap.addColorStop(1, `rgba(${P.cloudLit},0)`);
+      ctx.fillStyle = cap;
+      ctx.beginPath(); ctx.arc(lx, ly, lr, 0, Math.PI * 2); ctx.fill();
+    });
+    ctx.restore();
+  }
+
   const STARS = (() => {
     const rand = rng(88), a = [];
     for (let i = 0; i < 150; i++) a.push([rand(), rand() * .78, rand() * .8 + .2, rand() * 1.4 + .6]);
@@ -1032,6 +1085,8 @@
     });
     ctx.restore();
 
+    drawClouds(t);
+
     // --- ground ---
     let gx = 0, gz = 0;
     PROJECTS.forEach(p => { const c = hexCentre(p.q, p.r); gx += c.x; gz += c.z; });
@@ -1089,7 +1144,7 @@
       ctx.restore();
     }
 
-    // --- beacon over any district that wants you: readable across a room ---
+    // --- beacon over any district that wants you ---
     ctx.save(); ctx.globalCompositeOperation = "lighter";
     PROJECTS.forEach(p => {
       if (!p.needsYou) return;
@@ -1111,7 +1166,7 @@
     });
     ctx.restore();
 
-    // --- district labels, pushed outward so they land on open ground ---
+    // --- district labels, pushed outward onto open ground ---
     ctx.save();
     ctx.textAlign = "center"; ctx.textBaseline = "top";
     const fs = Math.max(12, Math.min(30, cam.s * .40));
