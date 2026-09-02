@@ -239,7 +239,7 @@
     }
   ];
 
-  const CELLS = [{ q: 0, r: 0 }, { q: 1, r: -1 }, { q: 0, r: 1 }, { q: 1, r: 0 }];
+  const CELLS = [{ q: 0, r: 0 }, { q: 1, r: 0 }, { q: 0, r: 1 }, { q: 1, r: 1 }];
   PROJECTS.forEach((p, i) => Object.assign(p, CELLS[i % CELLS.length]));
 
   /* ---------- palettes ---------- */
@@ -474,7 +474,7 @@
           d: bx + bz, draw: () => {
             castPoly(rect(bx, bz, w, .8, a), y, h + .1);
             box(bx, bz, w, .8, y, h, P.walls[i % 5], { rot: a, win: true });
-            box(bx, bz, w + .16, .96, y + h, .07, P.walls[4], { rot: a, top: p.accent });
+            box(bx, bz, w + .16, .96, y + h, .07, P.walls[4], { rot: a, top: i % 2 ? p.accent : P.roof });
           }
         });
       }
@@ -499,18 +499,19 @@
           if (SILENT) return;
           const flags = ["#c9542f", "#d99a2b", "#2f7d55", "#3f6491"];
           [[-1.5, 1.35], [1.6, 1.15]].forEach((anchor, run) => {
-            const A = px(cx, y + 1.05, cz), B = px(cx + anchor[0], y + .95, cz + anchor[1]);
+            const A = px(cx, y + 1.34, cz), B = px(cx + anchor[0], y + 1.28, cz + anchor[1]);
             ctx.save();
             ctx.strokeStyle = P.trim; ctx.globalAlpha = .5; ctx.lineWidth = 1;
             ctx.beginPath(); ctx.moveTo(A[0], A[1]);
-            ctx.quadraticCurveTo((A[0] + B[0]) / 2, (A[1] + B[1]) / 2 + 16, B[0], B[1]); ctx.stroke();
+            const sag = 15 + 9 * (cam.s / 46);
+            ctx.quadraticCurveTo((A[0] + B[0]) / 2, (A[1] + B[1]) / 2 + sag, B[0], B[1]); ctx.stroke();
             ctx.globalAlpha = .92;
-            for (let i = 1; i < 9; i++) {
-              const u = i / 9, iv = 1 - u;
+            for (let i = 1; i < 8; i++) {
+              const u = i / 8, iv = 1 - u;
               const qx = iv * iv * A[0] + 2 * iv * u * ((A[0] + B[0]) / 2) + u * u * B[0];
-              const qy = iv * iv * A[1] + 2 * iv * u * ((A[1] + B[1]) / 2 + 16) + u * u * B[1];
+              const qy = iv * iv * A[1] + 2 * iv * u * ((A[1] + B[1]) / 2 + sag) + u * u * B[1];
               ctx.fillStyle = flags[(i + run) % flags.length];
-              ctx.beginPath(); ctx.moveTo(qx - 3.2, qy); ctx.lineTo(qx + 3.2, qy); ctx.lineTo(qx, qy + 6.5);
+              ctx.beginPath(); ctx.moveTo(qx - 4.6, qy); ctx.lineTo(qx + 4.6, qy); ctx.lineTo(qx, qy + 9.5);
               ctx.closePath(); ctx.fill();
             }
             ctx.restore();
@@ -673,13 +674,22 @@
 
   /* ---------- camera ---------- */
   function frame() {
-    let mx = 0, mz = 0;
-    PROJECTS.forEach(p => { const c = hexCentre(p.q, p.r); mx += c.x; mz += c.z; });
-    mx /= PROJECTS.length; mz /= PROJECTS.length;
     const narrow = W < 700;
-    cam.s = Math.max(19, Math.min(52, Math.min(W / (narrow ? 12.8 : 15.8), H / 8.4)));
-    cam.x = W / 2 - (mx - mz) * IX * cam.s + (narrow ? 0 : W * 0.06);
-    cam.y = H / 2 + (narrow ? 58 : 38) - ((mx + mz) * IY) * cam.s;
+    let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+    PROJECTS.forEach(p => {
+      const c = hexCentre(p.q, p.r);
+      hexCorners(c.x, c.z).forEach(q => {
+        const ux = (q[0] - q[1]) * IX, uy = (q[0] + q[1]) * IY;
+        x0 = Math.min(x0, ux); x1 = Math.max(x1, ux);
+        y0 = Math.min(y0, uy - 2.4); y1 = Math.max(y1, uy);   // 2.4 = tallest landmark
+      });
+    });
+    const padL = narrow ? 12 : Math.max(280, W * .30), padR = narrow ? 12 : 28;
+    const padT = narrow ? 178 : 30, padB = narrow ? 56 : 66;
+    const aw = Math.max(60, W - padL - padR), ah = Math.max(60, H - padT - padB);
+    cam.s = Math.max(12, Math.min(56, Math.min(aw / (x1 - x0), ah / (y1 - y0))));
+    cam.x = padL + (aw - (x1 - x0) * cam.s) / 2 - x0 * cam.s;
+    cam.y = padT + (ah - (y1 - y0) * cam.s) / 2 - y0 * cam.s;
   }
   function resize() {
     const r = hero.getBoundingClientRect(), dpr = Math.min(2, window.devicePixelRatio || 1);
