@@ -73,9 +73,9 @@ views read the same townships and add live cadets on top.
 - **One solid vocabulary per renderer.** Canvas 2D: `prism()` extrudes any convex
   footprint, add shapes by writing footprints. WebGL: `box()`, `cyl()`, `ball()` and
   `slab()` over rounded geometry, with `sugar()` for anything pastel. Add shapes by
-  composing those, or by placing a CC0 model through `model()` with a procedural
-  fallback. Models must be CC0 and chibi in register; nothing photoreal, nothing that
-  needs attribution.
+  composing those, or by naming a CC0 model in `MODEL_MAP` for one of the slots. Every
+  slot keeps a procedural fallback. Models must be CC0 and chibi in register: Kenney
+  first; nothing photoreal, nothing that needs attribution.
 - **The ground is terrain, never water. Plinths are thin slabs, never blocks.**
 - **Every district is composed by hand. There are no district templates.** A stadium,
   a zócalo and a control yard have nothing structural in common and should not be

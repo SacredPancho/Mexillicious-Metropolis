@@ -64,6 +64,25 @@ read as a lake around an island. The ground is now flat under the city and facet
 low-poly hills and mountains beyond, with scattered rocks. Plinths are 12 to 22 hundredths
 high so the step between districts is a border and nothing more.
 
+**Every placement is a slot in `MODEL_MAP`.** The top of `metropolis-3d.html` maps named
+slots (`plaza.building`, `watch.tower`, `bakery.shop`, `stadium.bowl`, `lamp`, `cadet`, and
+so on) to a model name, a scale for its one-unit tile and a turn. A slot set to `null`
+keeps the hand-built version. That is how the rest of the city becomes Kenney: download
+the kit from kenney.nl, drop the GLB into `prototypes/models/kenney/`, run
+`tools/pack-models.py`, name it in the slot. No renderer code changes.
+
+Slots still hand-built, and the kenney.nl kits most likely to fill them (check each
+kit's preview before buying into it; this list is from memory, not verified):
+
+| Slot | Wants | Kenney kit to look at |
+| --- | --- | --- |
+| `plaza.landmark` | a bandstand or gazebo | Fantasy Town Kit, Holiday Kit |
+| `plaza.stall` | four market stalls | Fantasy Town Kit, Food Kit |
+| `stadium.bowl` | a small stadium | none known; keep procedural |
+| `watch.tower` | a control tower | Space Kit, Tower Defense Kit |
+| `bakery.shop` | a shopfront with awning | City Kit (Commercial), Fantasy Town Kit |
+| `lamp` | a standalone street lamp | City Kit (Roads), Fantasy Town Kit |
+
 **The look wins over the rules.** The reference stills need bevelled geometry, soft
 shadows, a reflective floor, bloom and a camera that orbits. The Canvas 2D painter can do
 none of those, so the "no CDN, no three.js" and "camera is fixed" rules were dropped and

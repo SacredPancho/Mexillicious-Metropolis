@@ -117,6 +117,29 @@
   const CELLS = [{ q: 0, r: 0 }, { q: 1, r: 0 }, { q: 0, r: 1 }, { q: 1, r: 1 }];
   PROJECTS.forEach((p, i) => Object.assign(p, CELLS[i % CELLS.length]));
 
+  /* ══════════ MODEL MAP. Every placement in the city is a named slot. ══════════
+     Point a slot at a model name from prototypes/models/ (packed into models.js by
+     tools/pack-models.py) with a scale for its one-unit tile and a turn in radians.
+     A slot set to null keeps the hand-built version. Drop a GLB from any Kenney kit
+     into prototypes/models/kenney/, repack, name it here, and it is in the city. */
+  const MODEL_MAP = {
+    "cadet":            { model: "character", s: .6 },
+    "plaza.building":   [{ model: "building-small-a", s: .95 }, { model: "building-small-b", s: .95 }, { model: "building-small-d", s: .95 }, { model: "building-small-c", s: .95 }],
+    "plaza.park":       [{ model: "grass-trees-tall", s: .8 }, { model: "grass-trees", s: .8, ry: 1.3 }, { model: "grass-trees", s: .8, ry: 2.6 }],
+    "plaza.van":        { model: "vehicle-truck-purple", s: .32, ry: .5 },
+    "plaza.landmark":   null,                              // the bandstand
+    "plaza.stall":      null,                              // four market stalls
+    "stadium.bowl":     null,
+    "stadium.forecourt":{ model: "pavement-fountain", s: .8, ry: .4 },
+    "watch.tower":      null,
+    "watch.hall":       [{ model: "building-garage", s: 1.3, ry: -.25 }, { model: "building-garage", s: .95, ry: Math.PI - .25 }],
+    "watch.bike":       { model: "vehicle-motorcycle", s: .3, ry: -1.1 },
+    "bakery.shop":      null,
+    "bakery.park":      { model: "grass-trees", s: .7, ry: .6 },
+    "bakery.truck":     { model: "vehicle-truck-yellow", s: .32, ry: 1.9 },
+    "lamp":             null
+  };
+
   /* ---------- palette: the night look, shared with metropolis.html ---------- */
   const C = {
     skyTop: 0x06051a, skyMid: 0x17103a, skyLow: 0x3a2158, horizon: 0x6a4590, haze: 0x1a1236,
@@ -246,8 +269,12 @@
     const loader = new THREE.GLTFLoader();
     return Promise.all(Object.keys(SRC).map(name => new Promise(res => loader.load(SRC[name], g => { MODELS[name] = g; res(); }, undefined, () => res()))));
   }
-  // place a model by footprint: s scales the one-unit Kenney tile, ry turns it. Null if missing,
-  // so every call site keeps a procedural fallback.
+  // place a slot from MODEL_MAP by footprint; extra turn adds to the slot's own. Null when the
+  // slot is empty or its model failed to load, so every call site keeps a procedural fallback.
+  function slot(g, key, idx, x, z, y, ry = 0) {
+    let m = MODEL_MAP[key]; if (Array.isArray(m)) m = m[idx % m.length];
+    return m ? model(g, m.model, m.s || 1, x, z, y, ry + (m.ry || 0)) : null;
+  }
   function model(g, name, s, x, z, y, ry = 0) {
     const src = MODELS[name]; if (!src) return null;
     const obj = src.scene.clone(true);
@@ -385,11 +412,11 @@
 
   const cadets = [];
   function cadet(accent, alert) {
-    const src = MODELS.character;
+    const cm = MODEL_MAP.cadet, src = cm && MODELS[cm.model];
     if (!src) return cadetProcedural(accent, alert);
     const g = new THREE.Group(), body = src.scene.clone(true);
     body.traverse(o => { if (o.isMesh) { o.material = pastel(o.material); o.castShadow = o.receiveShadow = true; } });
-    body.scale.setScalar(.6); g.add(body);
+    body.scale.setScalar(cm.s || 1); body.rotation.y = cm.ry || 0; g.add(body);
     const mixer = new THREE.AnimationMixer(body), clips = {};
     src.animations.forEach(a => { clips[a.name] = mixer.clipAction(a); });
     if (clips.idle) clips.idle.play();
@@ -464,6 +491,7 @@
     ball(g, .2 * s, x + .16 * s, y + .92 * s, z - .08 * s, sugar(0x96ecc6, .18, .95));
   }
   function lamp(g, x, z, y, accent) {
+    if (slot(g, "lamp", 0, x, z, y)) { const l = new THREE.PointLight(lin(accent), .35, 4); l.position.set(x, y + 1.3, z); g.add(l); return; }
     cyl(g, .035, .045, 1.25, x, z, y, matte(C.trim), 8);
     ball(g, .085, x, y + 1.3, z, sugar(accent, .9, .6));
     const l = new THREE.PointLight(lin(accent), .35, 4); l.position.set(x, y + 1.3, z); g.add(l);
@@ -479,15 +507,18 @@
     plaza(p, g, y) {
       const acc = sugar(p.accent, .4);
       cyl(g, 2.05, 2.05, .05, 0, 0, y, matte(C.stone, .95), 12);
-      // bandstand
-      cyl(g, .7, .74, .12, 0, 0, y + .05, matte(0x4b3d78), 8);
-      for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2 + .39; cyl(g, .04, .04, .46, Math.cos(a) * .56, Math.sin(a) * .56, y + .17, matte(C.trim), 8); }
-      cyl(g, .5, .9, .22, 0, 0, y + .62, acc, 8);
-      cyl(g, .06, .36, .16, 0, 0, y + .84, acc, 8);
-      ball(g, .07, 0, y + 1.05, 0, sugar(p.accent, .9, .5));
+      // bandstand, the landmark
+      if (!slot(g, "plaza.landmark", 0, 0, 0, y + .05)) {
+        cyl(g, .7, .74, .12, 0, 0, y + .05, matte(0x4b3d78), 8);
+        for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2 + .39; cyl(g, .04, .04, .46, Math.cos(a) * .56, Math.sin(a) * .56, y + .17, matte(C.trim), 8); }
+        cyl(g, .5, .9, .22, 0, 0, y + .62, acc, 8);
+        cyl(g, .06, .36, .16, 0, 0, y + .84, acc, 8);
+        ball(g, .07, 0, y + 1.05, 0, sugar(p.accent, .9, .5));
+      }
       // market stalls, angled to face the bandstand
       for (let i = 0; i < 4; i++) {
         const a = i * Math.PI / 2 + .55, rr = 1.42, sx = Math.cos(a) * rr, sz = Math.sin(a) * rr, rot = -(a + Math.PI / 2);
+        if (slot(g, "plaza.stall", i, sx, sz, y + .05, rot)) continue;
         box(g, .62, .34, .46, sx, sz, y + .05, sugar(C.walls[i % 3], .3), rot, .07);
         [-.28, 0, .28].forEach((o, k) => {
           const ox = sx + Math.cos(a + Math.PI / 2) * o, oz = sz + Math.sin(a + Math.PI / 2) * o;
@@ -499,7 +530,7 @@
       for (let i = 0; i < 4; i++) {
         const a = i * Math.PI / 2 - .5, rr = 2.05 + rand() * .18, bx = Math.cos(a) * rr, bz = Math.sin(a) * rr;
         const w = .9 + rand() * .35, h = .72 + rand() * .5;
-        if (!model(g, ["building-small-a", "building-small-b", "building-small-d", "building-small-c"][i], .95, bx, bz, y + .05, -a - Math.PI / 2)) {
+        if (!slot(g, "plaza.building", i, bx, bz, y + .05, -a - Math.PI / 2)) {
           box(g, w, h, .8, bx, bz, y + .05, sugar(C.walls[i % 5], .3), -a, .09);
           box(g, w + .16, .07, .96, bx, bz, y + .05 + h, i % 2 ? acc : matte(C.roof), -a, .03);
           for (let k = 0; k < 3; k++) {                    // windows on the face toward the plaza
@@ -510,13 +541,14 @@
           }
         }
       }
-      [[-1.55, 1.5], [1.7, 1.35], [-1.75, -1.15]].forEach((o, k) => { if (!model(g, k ? "grass-trees" : "grass-trees-tall", .8, o[0], o[1], y + .05, k * 1.3)) tree(g, o[0], o[1], y + .05, .95); });
+      [[-1.55, 1.5], [1.7, 1.35], [-1.75, -1.15]].forEach((o, k) => { if (!slot(g, "plaza.park", k, o[0], o[1], y + .05)) tree(g, o[0], o[1], y + .05, .95); });
+      slot(g, "plaza.van", 0, .25, -2.15, y + .05);
       // broadcast mast: the app publishes outward
       cyl(g, .05, .07, 1.7, 1.55, -1.6, y + .05, matte(C.trim), 8);
       cyl(g, .34, .34, .08, 1.55, -1.6, y + 1.75, acc, 6);
       cyl(g, .02, .02, .3, 1.55, -1.6, y + 1.83, acc, 6);
       lamp(g, -.2, 1.9, y + .05, p.accent); lamp(g, 1.9, .2, y + .05, p.accent);
-      const ob = [{ x: 0, z: 0, r: 1.02 }, { x: 1.55, z: -1.6, r: .38 }];
+      const ob = [{ x: 0, z: 0, r: 1.02 }, { x: 1.55, z: -1.6, r: .38 }, { x: .25, z: -2.15, r: .55 }];
       for (let i = 0; i < 4; i++) { const aa = i * Math.PI / 2 + .55; ob.push({ x: Math.cos(aa) * 1.42, z: Math.sin(aa) * 1.42, r: .62 }); }
       const rb = rng(seedOf(p.name));
       for (let i = 0; i < 4; i++) { const aa = i * Math.PI / 2 - .5, rr2 = 2.05 + rb() * .18; ob.push({ x: Math.cos(aa) * rr2, z: Math.sin(aa) * rr2, r: .78 }); }
@@ -551,7 +583,7 @@
       const tx = 1.0, tz = 1.62;                            // training field, kept small so the bowl leads
       box(g, 1.5, .03, .95, tx, tz, y, sugar(C.grassDark, .18, .95), -.3, 0);
       [-1, 1].forEach(s => box(g, .05, .22, .34, tx + Math.cos(.3) * s * .66, tz + Math.sin(.3) * s * .66, y + .03, lineMat, -.3, .01));
-      model(g, "pavement-fountain", .8, -2.0, 1.45, y, .4);
+      slot(g, "stadium.forecourt", 0, -2.0, 1.45, y);
       const ob = [{ x: sx, z: sz, r: 2.0 }, { x: tx, z: tz, r: 1.0 }, { x: -2.0, z: 1.45, r: .5 }];
       [[-.78, -.78], [.78, -.78], [-.78, .78], [.78, .78]].forEach(o => ob.push({ x: sx + o[0] * (A + DEPTH), z: sz + o[1] * (B + DEPTH), r: .26 }));
       walkers(p, 0, 0, y + .02, g, 3, 2.3, ob);
@@ -560,23 +592,26 @@
     watch(p, g, y) {
       cyl(g, 1.9, 1.9, .04, 0, 0, y, matte(0x2c2050, .95), 6);
       const tx = -.45, tz = -.55;
-      cyl(g, .34, .38, 1.85, tx, tz, y + .04, sugar(C.walls[3], .3), 6);
-      cyl(g, .58, .5, .34, tx, tz, y + 1.89, new THREE.MeshPhysicalMaterial({ color: lin(0x8fd4ff), emissive: lin(0x8fd4ff), emissiveIntensity: .35, roughness: .15, transparent: true, opacity: .72 }), 8);
-      cyl(g, .64, .64, .07, tx, tz, y + 2.23, sugar(p.accent, .5), 8);
-      cyl(g, .025, .025, .34, tx, tz, y + 2.3, matte(C.trim), 6);
+      if (!slot(g, "watch.tower", 0, tx, tz, y + .04)) {
+        cyl(g, .34, .38, 1.85, tx, tz, y + .04, sugar(C.walls[3], .3), 6);
+        cyl(g, .58, .5, .34, tx, tz, y + 1.89, new THREE.MeshPhysicalMaterial({ color: lin(0x8fd4ff), emissive: lin(0x8fd4ff), emissiveIntensity: .35, roughness: .15, transparent: true, opacity: .72 }), 8);
+        cyl(g, .64, .64, .07, tx, tz, y + 2.23, sugar(p.accent, .5), 8);
+        cyl(g, .025, .025, .34, tx, tz, y + 2.3, matte(C.trim), 6);
+      }
       const l = new THREE.PointLight(lin(p.accent), .6, 6); l.position.set(tx, y + 2.1, tz); g.add(l);
       const dx = .95, dz = -.95;                            // the one moving mechanism in the city
       cyl(g, .08, .1, .95, dx, dz, y + .04, matte(C.trim), 8);
       const dish = box(g, .74, .3, .16, dx, dz, y + .99, sugar(p.accent, .45), 0, .05);
       g.userData.dish = dish;
       [[-.15, 1.15, 1.5, .8], [1.15, .75, 1.0, .55]].forEach((s, i) => {
-        if (model(g, "building-garage", i ? .95 : 1.3, s[0], s[1], y + .04, -.25 + (i ? Math.PI : 0))) return;
+        if (slot(g, "watch.hall", i, s[0], s[1], y + .04)) return;
         box(g, s[2], .55, s[3], s[0], s[1], y + .04, sugar(C.walls[i ? 0 : 4], .3), -.25, .08);
         [-.3, 0, .3].forEach(o => box(g, .16, .09, .3, s[0] + o * .8, s[1] + o * .2, y + .59, matte(C.trim), -.25, .02));
       });
       [[-1.5, .3], [-1.25, -1.35]].forEach(o => { cyl(g, .03, .03, 1.25, o[0], o[1], y + .04, matte(C.trim), 6); ball(g, .06, o[0], y + 1.32, o[1], sugar(p.accent, .9, .5)); });
       lamp(g, 1.7, -.2, y + .04, p.accent);
-      const ob = [{ x: tx, z: tz, r: .8 }, { x: dx, z: dz, r: .48 }, { x: -.15, z: 1.15, r: .95 }, { x: 1.15, z: .75, r: .72 }, { x: -1.5, z: .3, r: .22 }, { x: -1.25, z: -1.35, r: .22 }];
+      slot(g, "watch.bike", 0, 1.75, 1.55, y + .04);
+      const ob = [{ x: tx, z: tz, r: .8 }, { x: dx, z: dz, r: .48 }, { x: -.15, z: 1.15, r: .95 }, { x: 1.15, z: .75, r: .72 }, { x: -1.5, z: .3, r: .22 }, { x: -1.25, z: -1.35, r: .22 }, { x: 1.75, z: 1.55, r: .5 }];
       walkers(p, 0, 0, y + .04, g, 3, 2.2, ob);
     },
 
@@ -584,11 +619,13 @@
       const acc = sugar(p.accent, .4), cream = sugar(0xf0e7d6, .15, .9);
       cyl(g, 2.0, 2.0, .05, 0, 0, y, matte(C.stone, .95), 12);
       const bx = 0, bz = -.25;
-      box(g, 1.7, 1.0, 1.2, bx, bz, y + .05, sugar(C.walls[2], .3), 0, .1);
-      box(g, 1.86, .08, 1.36, bx, bz, y + 1.05, matte(C.roof), 0, .03);
-      [-.55, -.18, .19, .56].forEach((o, k) => box(g, .37, .06, .58, bx + o, bz + .82, y + .67, k % 2 ? acc : cream, 0, .02));
-      box(g, .9, .3, .1, bx, bz - .1, y + 1.13, cream, 0, .02);
-      for (let k = 0; k < 3; k++) box(g, .16, .2, .03, bx + (k - 1) * .5, bz + .61, y + .3, sugar(0xfff3d0, .9, .6), 0, .01);
+      if (!slot(g, "bakery.shop", 0, bx, bz, y + .05)) {
+        box(g, 1.7, 1.0, 1.2, bx, bz, y + .05, sugar(C.walls[2], .3), 0, .1);
+        box(g, 1.86, .08, 1.36, bx, bz, y + 1.05, matte(C.roof), 0, .03);
+        [-.55, -.18, .19, .56].forEach((o, k) => box(g, .37, .06, .58, bx + o, bz + .82, y + .67, k % 2 ? acc : cream, 0, .02));
+        box(g, .9, .3, .1, bx, bz - .1, y + 1.13, cream, 0, .02);
+        for (let k = 0; k < 3; k++) box(g, .16, .2, .03, bx + (k - 1) * .5, bz + .61, y + .3, sugar(0xfff3d0, .9, .6), 0, .01);
+      }
       const ox = .95, oz = -1.25;                           // oven and chimney
       box(g, .78, .5, .66, ox, oz, y + .05, matte(C.trim), 0, .06);
       cyl(g, .12, .14, 1.15, ox + .22, oz, y + .55, matte(C.trim), 10);
@@ -601,8 +638,9 @@
       const s1 = ball(g, .26, 1.5, y + .26, -.35, sugar(0xd8d0e8, .1, .95)); s1.scale.set(1, .8, .9);
       const s2 = ball(g, .22, 1.45, y + .62, -.3, sugar(0xd8d0e8, .1, .95)); s2.scale.set(1, .8, .9);
       lamp(g, -1.85, -.4, y + .05, p.accent);
-      model(g, "grass-trees", .7, -1.0, -1.55, y + .05, .6);
-      const ob = [{ x: bx, z: bz, r: 1.18 }, { x: ox, z: oz, r: .58 }, { x: -1.0, z: -1.55, r: .45 }, { x: -1.4, z: .62, r: 1.12 }, { x: 1.42, z: .95, r: .95 }, { x: 1.5, z: -.35, r: .45 }, { x: -.62, z: .62, r: .38 }, { x: .1, z: .74, r: .38 }];
+      slot(g, "bakery.park", 0, -1.0, -1.55, y + .05);
+      slot(g, "bakery.truck", 0, -1.9, -.75, y + .05);
+      const ob = [{ x: bx, z: bz, r: 1.18 }, { x: ox, z: oz, r: .58 }, { x: -1.0, z: -1.55, r: .45 }, { x: -1.9, z: -.75, r: .55 }, { x: -1.4, z: .62, r: 1.12 }, { x: 1.42, z: .95, r: .95 }, { x: 1.5, z: -.35, r: .45 }, { x: -.62, z: .62, r: .38 }, { x: .1, z: .74, r: .38 }];
       walkers(p, 0, 0, y + .05, g, 3, 2.2, ob);
     },
 

@@ -1,7 +1,7 @@
 # Kenney models
 
 Low-poly CC0 models by Kenney (https://kenney.nl), taken from the GitHub starter kits
-`KenneyNL/Starter-Kit-City-Builder` and `KenneyNL/Starter-Kit-3D-Platformer`. The kits'
+`KenneyNL/Starter-Kit-City-Builder`, `KenneyNL/Starter-Kit-3D-Platformer` and `KenneyNL/Starter-Kit-Racing`. The kits'
 READMEs state the models are CC0; the repository wrappers are MIT. No attribution is
 required, and none of the files are modified.
 
