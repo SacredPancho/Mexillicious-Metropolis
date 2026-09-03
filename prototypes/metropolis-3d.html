@@ -130,7 +130,8 @@
   catch (e) { hero.classList.add("nogl-on"); return; }
   renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
   renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  const Q = new URLSearchParams(location.search);
+  renderer.shadowMap.type = Q.get("shadow") === "pcf" ? THREE.PCFSoftShadowMap : THREE.VSMShadowMap;
   renderer.outputEncoding = THREE.sRGBEncoding;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = .88;
@@ -166,6 +167,12 @@
     g.fillStyle = grad; g.fillRect(0, 0, size, size);
     return new THREE.CanvasTexture(c);
   }
+  const contactTex = radialTex([[0, "rgb(70,52,110)"], [.45, "rgb(150,135,190)"], [1, "rgb(255,255,255)"]]);
+  const contactMat = new THREE.MeshBasicMaterial({ map: contactTex, blending: THREE.MultiplyBlending, transparent: true, depthWrite: false });
+  function contact(g, x, z, y, r) {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(r * 2, r * 2), contactMat);
+    m.rotation.x = -Math.PI / 2; m.position.set(x, y + .004, z); m.renderOrder = 1; g.add(m); return m;
+  }
   const haloTex = radialTex([[0, "rgba(255,255,255,.9)"], [.3, "rgba(255,255,255,.32)"], [1, "rgba(255,255,255,0)"]]);
   const dotTex = radialTex([[0, "rgba(255,255,255,1)"], [.4, "rgba(255,255,255,.7)"], [1, "rgba(255,255,255,0)"]], 64);
   const cloudTex = (() => {
@@ -181,7 +188,7 @@
 
   /* ---------- materials: everything pastel is sugar, lit from within ---------- */
   const matCache = new Map();
-  function sugar(color, emit = .26, rough = .92) {
+  function sugar(color, emit = .16, rough = .92) {
     const k = color + ":" + emit + ":" + rough;
     if (!matCache.has(k)) matCache.set(k, new THREE.MeshStandardMaterial({
       color: lin(color), emissive: lin(color), emissiveIntensity: emit, roughness: rough, metalness: 0,
@@ -200,8 +207,8 @@
     return m;
   }
   // a box standing on y0, so kits can think in footprints like the 2D views
-  const box = (g, w, h, d, x, z, y0, mat, ry = 0, r = .06) => { const m = mesh(rbox(w, h, d, r), mat, x, y0 + h / 2, z, ry); g.add(m); return m; };
-  const cyl = (g, rt, rb, h, x, z, y0, mat, seg = 24, ry = 0) => { const m = mesh(new THREE.CylinderGeometry(rt, rb, h, seg), mat, x, y0 + h / 2, z, ry); g.add(m); return m; };
+  const box = (g, w, h, d, x, z, y0, mat, ry = 0, r = .06) => { const m = mesh(rbox(w, h, d, r), mat, x, y0 + h / 2, z, ry); g.add(m); if (h >= .25 && Math.max(w, d) >= .3) contact(g, x, z, y0, Math.max(w, d) * .8); return m; };
+  const cyl = (g, rt, rb, h, x, z, y0, mat, seg = 24, ry = 0) => { const m = mesh(new THREE.CylinderGeometry(rt, rb, h, seg), mat, x, y0 + h / 2, z, ry); g.add(m); if (h >= .25 && rb >= .15) contact(g, x, z, y0, rb * 1.6); return m; };
   const ball = (g, r, x, y, z, mat) => { const m = mesh(new THREE.SphereGeometry(r, 24, 18), mat, x, y, z); g.add(m); return m; };
   function hexShape(rad) {
     const s = new THREE.Shape();
@@ -260,25 +267,27 @@
   }
 
   /* ---------- lights ---------- */
-  scene.add(new THREE.HemisphereLight(lin(0x6a5aa0), lin(0x120d2c), .32));
-  const moonLight = new THREE.DirectionalLight(lin(0xffd0ee), .55);
-  moonLight.position.set(-22, 30, -12); moonLight.castShadow = true;
+  scene.add(new THREE.HemisphereLight(lin(0x7a6ab0), lin(0x120d2c), .3));
+  // the moon rakes in low from the left so every block throws a long soft shadow
+  const moonLight = new THREE.DirectionalLight(lin(0xffd0ee), .95);
+  moonLight.position.set(gx - 26, 15, gz - 18); moonLight.castShadow = true;
   moonLight.shadow.mapSize.set(2048, 2048);
-  moonLight.shadow.camera.left = -18; moonLight.shadow.camera.right = 18;
-  moonLight.shadow.camera.top = 18; moonLight.shadow.camera.bottom = -18;
-  moonLight.shadow.camera.near = 5; moonLight.shadow.camera.far = 90;
-  moonLight.shadow.bias = -.0006; moonLight.shadow.normalBias = .02;
+  moonLight.shadow.camera.left = -20; moonLight.shadow.camera.right = 20;
+  moonLight.shadow.camera.top = 20; moonLight.shadow.camera.bottom = -20;
+  moonLight.shadow.camera.near = 1; moonLight.shadow.camera.far = 110;
+  moonLight.shadow.bias = -.0004; moonLight.shadow.normalBias = .03; moonLight.shadow.radius = 6;
   moonLight.target.position.set(gx, 0, gz); scene.add(moonLight, moonLight.target);
-  const fill = new THREE.DirectionalLight(lin(0x8fd4ff), .18); fill.position.set(26, 14, 20); scene.add(fill);
+  const fill = new THREE.DirectionalLight(lin(0x8fd4ff), .12); fill.position.set(26, 14, 20); scene.add(fill);
 
   /* ---------- floor: a dark mirror, dimmed by a shadow-catching veil ---------- */
   // the mirror only lives under the city: the Reflector shader has no fog, so far away it
-  // would stay bright. Beyond it the floor is plain, fogged and dark.
-  const far = new THREE.Mesh(new THREE.PlaneGeometry(360, 360), new THREE.MeshStandardMaterial({ color: lin(C.floor), roughness: .6, metalness: 0 }));
+  // would stay bright. Beyond it the floor is plain, fogged and dark. Lambert on purpose:
+  // a low key light puts a specular sheen across any standard material at grazing angles.
+  const far = new THREE.Mesh(new THREE.PlaneGeometry(360, 360), new THREE.MeshLambertMaterial({ color: lin(C.floor) }));
   far.rotation.x = -Math.PI / 2; far.position.y = -.03; far.receiveShadow = true; scene.add(far);
   const mirror = new THREE.Reflector(new THREE.PlaneGeometry(110, 110), { clipBias: .003, textureWidth: 1024, textureHeight: 1024, color: 0x555555 });
   mirror.rotation.x = -Math.PI / 2; mirror.position.y = -.012; mirror.position.set(gx, -.012, gz); mirror.rotation.x = -Math.PI / 2; scene.add(mirror);
-  const veil = new THREE.Mesh(new THREE.PlaneGeometry(110, 110), new THREE.MeshStandardMaterial({ color: lin(C.floor), roughness: .55, metalness: 0, transparent: true, opacity: .84 }));
+  const veil = new THREE.Mesh(new THREE.PlaneGeometry(110, 110), new THREE.MeshLambertMaterial({ color: lin(C.floor), transparent: true, opacity: .84 }));
   veil.rotation.x = -Math.PI / 2; veil.position.set(gx, 0, gz); veil.receiveShadow = true; scene.add(veil);
 
   /* ---------- cadets, walking deterministic routes like the 2D views ---------- */
@@ -348,6 +357,7 @@
       face.scale.set(.5, .5, 1); face.position.set(.14, .585, 0); body.add(face);
       g.userData.face = face;
     }
+    contact(g, 0, 0, 0, .26);
     g.userData.legs = legs; g.userData.arms = arms; g.userData.body = body;
     return g;
   }
@@ -527,15 +537,16 @@
   PROJECTS.forEach((p, i) => {
     const c = hexCentre(p.q, p.r), h = PLINTH_H[i % PLINTH_H.length], bevel = .16;
     const g = new THREE.Group(); g.position.set(c.x, 0, c.z); scene.add(g);
-    const base = slab(g, hexShape(R * .97 - bevel), h - bevel, bevel, sugar(p.accent, .28, .95), -bevel);
+    const base = slab(g, hexShape(R * .97 - bevel), h - bevel, bevel, sugar(p.accent, .22, .95), -bevel);
     base.userData.project = p; plinths.push(base);
+    contact(g, 0, 0, 0, R * 1.5);
     const rimMat = new THREE.MeshBasicMaterial({ color: lin(p.accent), transparent: true, opacity: 0, depthWrite: false });
     const rim = mesh(new THREE.TorusGeometry(R * .97, .03, 6, 6), rimMat, 0, h + .02, 0);
     rim.rotation.x = Math.PI / 2; rim.rotation.z = Math.PI / 6; rim.castShadow = rim.receiveShadow = false; g.add(rim);
     // the district's own colour pools on the floor around it
     const pool = new THREE.Mesh(new THREE.PlaneGeometry(R * 4.4, R * 4.4), new THREE.MeshBasicMaterial({ map: haloTex, color: lin(p.accent), transparent: true, opacity: .32, depthWrite: false, blending: THREE.AdditiveBlending }));
     pool.rotation.x = -Math.PI / 2; pool.position.y = .01; g.add(pool);
-    const glow = new THREE.PointLight(lin(p.accent), .35, 11); glow.position.set(0, h + 1.6, 0); g.add(glow);
+    const glow = new THREE.PointLight(lin(p.accent), .25, 11); glow.position.set(0, h + 1.6, 0); g.add(glow);
     KITS[p.kit](p, g, h);
     if (p.needsYou) {                                     // beacon over any district that wants you
       const beam = new THREE.Mesh(new THREE.CylinderGeometry(.2, .9, 4, 24, 1, true), new THREE.MeshBasicMaterial({ color: lin(p.accent), transparent: true, opacity: .04, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }));
@@ -563,7 +574,7 @@
   })();
 
   /* ---------- camera and orbit ---------- */
-  const D0 = +(new URLSearchParams(location.search).get("d")) || (innerWidth < innerHeight ? 36 : 26), POLAR0 = 1.36, AZ0 = .6;
+  const D0 = +Q.get("d") || (innerWidth < innerHeight ? 36 : 26), POLAR0 = 1.36, AZ0 = .6;
   camera.position.set(gx + Math.sin(POLAR0) * Math.sin(AZ0) * D0, .8 + Math.cos(POLAR0) * D0, gz + Math.sin(POLAR0) * Math.cos(AZ0) * D0);
   const controls = new THREE.OrbitControls(camera, cv);
   controls.target.set(gx, .8, gz);
