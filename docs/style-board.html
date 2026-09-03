@@ -108,13 +108,23 @@
     <div>
       <p class="kicker">Style board · Metropolis</p>
       <h1>The city, under a sky</h1>
-      <p class="lede">Reference stills, the palette pulled from them, and the rules the renderer now follows. Both prototypes share the sky code; the night palette is the primary look.</p>
+      <p class="lede">Reference stills, the palette pulled from them, and the rules the renderers follow. The WebGL view is the primary look now; the Canvas 2D views keep the same sky as a flat fallback.</p>
     </div>
-    <div class="files">prototypes/metropolis.html<br>prototypes/hero.html<br>docs/refs/</div>
+    <div class="files">prototypes/metropolis-3d.html<br>prototypes/metropolis.html<br>prototypes/hero.html<br>docs/refs/</div>
   </header>
 
+  <section id="three-d">
+    <h2>The 3D view</h2>
+    <p class="sub">Built on three.js because the stills need what a flat painter cannot give: bevelled sugar-cube plinths, rounded geometry, soft shadows, a dark mirror floor, bloom, and a camera you can drag around the city. Every colour goes in as linear light, which is what keeps the pastels saturated instead of pale.</p>
+    <figure class="shot lead"><img src="refs/metropolis-3d.jpg" alt="The WebGL city: four bevelled pastel plinths on a dark mirror floor under a pink moon, cadets walking between rounded buildings"><figcaption><b>WebGL</b><span>drag to orbit, scroll to zoom, tap a district</span></figcaption></figure>
+    <div class="pair" style="margin-top:14px">
+      <figure class="shot"><img src="refs/metropolis-3d-close.jpg" alt="Close orbit of the panadería and control-yard districts, showing rounded edges, soft shadows and the reflection in the floor"><figcaption><b>Close</b><span>rounded edges, soft shadows, reflection</span></figcaption></figure>
+      <figure class="shot"><img src="refs/metropolis-3d-phone.jpg" alt="The same scene at phone width" style="aspect-ratio:16/10;object-position:center 40%"><figcaption><b>Phone</b><span>starts further out on narrow screens</span></figcaption></figure>
+    </div>
+  </section>
+
   <section id="after">
-    <h2>What changed</h2>
+    <h2>What changed in the flat views</h2>
     <p class="sub">Before, a flat purple disc filled the frame and the sky was a strip along the top edge. Now there is a horizon, two moons, a cloud bank, and a dark floor that the districts glow onto.</p>
     <div class="pair">
       <figure class="shot"><img src="refs/metropolis-before.jpg" alt="The wall display before: districts on a huge flat purple disc, sky visible only at the top edge"><figcaption><b>Before</b><span>Ground disc radius 12.5, one gradient, 150 stars</span></figcaption></figure>
@@ -176,16 +186,26 @@
       <div><dt>Dust</dt><dd>170 pastel points drifting upward through the whole frame, drawn after the solids so they sit in the air in front of the city. Off in the day palette apart from a trace.</dd></div>
       <div><dt>Day</dt><dd>Same code, different keys. Blue zenith, pale horizon at 28% glow, lilac far floor, one small pale moon, no stars, dust turned down.</dd></div>
     </dl>
+    <h2 style="margin-top:36px">Rules of the material, 3D view</h2>
+    <dl class="rules">
+      <div><dt>Sugar</dt><dd>One material for everything pastel: the accent as colour and as emissive at about a quarter strength, roughness above 0.9, a fine noise bump. <code>sugar(colour, emit, rough)</code> in the file.<span class="why">Emissive plus bloom is what reads as lit from within.</span></dd></div>
+      <div><dt>Edges</dt><dd>No sharp box anywhere. Buildings use rounded boxes; plinths and stadium stands are extruded shapes with a bevel. The bevel is what catches the moonlight on every top edge.</dd></div>
+      <div><dt>Plinths</dt><dd>Each district is a bevelled hex slab in its own accent, raised a different amount, with its colour pooled on the floor beneath and a point light above.</dd></div>
+      <div><dt>Floor</dt><dd>A mirror under the city, dimmed by a dark veil that catches shadows, then plain fogged floor out to the horizon. The mirror is small on purpose: the reflector shader has no fog.</dd></div>
+      <div><dt>Light</dt><dd>A pink moon key light with soft shadows, an ice fill from the other side, a low lilac hemisphere. Kept low so pastels stay pastel under tone mapping.</dd></div>
+      <div><dt>Colour</dt><dd>Hex values are sRGB and are converted to linear on the way in. Skip that and the whole city renders washed out.</dd></div>
+      <div><dt>Camera</dt><dd>Orbit with damping, no pan, distance 11 to 48, polar angle 26° to 83°. Slow auto-rotate unless reduced motion is on.</dd></div>
+    </dl>
   </section>
 
   <section id="kept">
     <h2>Deliberately not touched</h2>
-    <p class="sub">The style board is about the world around the districts. The districts themselves are governed by the hard rules in <code>CLAUDE.md</code>.</p>
+    <p class="sub">The district kits keep their hand-composed layouts in both renderers. The rules that used to forbid a CDN and a moving camera were dropped; the ones below still hold.</p>
     <div class="keep">
       <div><b>District kits</b>Every zócalo, stadium, control yard and panadería is still hand-composed from footprints. No cubes replaced buildings.</div>
       <div><b>Plinths and seams</b>Borders stay physical. The only new thing under a district is its light pool.</div>
-      <div><b>Camera, sun, scale</b>Unchanged. The horizon is computed from the camera, not the other way round.</div>
-      <div><b>No dependencies</b>Still one file per renderer, Canvas 2D, Google Fonts only.</div>
+      <div><b>Sun and scale</b>Unchanged. The 2D horizon is computed from the camera, not the other way round.</div>
+      <div><b>One dependency</b>The 3D view pins three.js r128 from jsDelivr. The 2D views still load nothing but fonts.</div>
       <div><b>Cadets</b>Same suits, same walks, same faces when a district needs you.</div>
       <div><b>Bloom and grain</b>The composite pass is the same. The sky just gives it more to bloom.</div>
     </div>

@@ -9,10 +9,12 @@ Repo: `SacredPancho/Mexillicious-Metropolis`
 
 ## Layout
 
-- `prototypes/hero.html` — public, read-only website hero. Daylight scale-model look.
-- `prototypes/metropolis.html` — private wall/control view. Night look, live-data shaped.
+- `prototypes/metropolis-3d.html` — the primary renderer. WebGL (three.js), orbit camera,
+  bevelled sugar-cube districts, soft shadows, mirror floor, bloom. Night only.
+- `prototypes/hero.html` — public, read-only website hero. Canvas 2D, fixed isometric camera.
+- `prototypes/metropolis.html` — private wall/control view in Canvas 2D. Kept as the flat fallback.
 - `docs/data-model.html` — session feed → township/cadet field mapping.
-- `docs/style-board.html` — reference stills, palette, and the sky rules both renderers share.
+- `docs/style-board.html` — reference stills, palette, and the sky and material rules.
 - `README.md` — every design decision and why, plus the open problems.
 
 ## Three targets, one engine
@@ -59,12 +61,16 @@ views read the same townships and add live cadets on top.
 
 - **Never put session data in `hero.html`.** Session titles, statuses and spend reveal
   unreleased work and competitive research. The public city is hand-written only.
-- **No build step, no dependencies, no CDN.** Both renderers are single files that open
-  directly in a browser. Fonts come from Google Fonts; everything else ships inline.
-  Do not introduce three.js or a bundler without saying why.
-- **`prism()` is the only solid primitive.** It extrudes any convex footprint, so
-  rotated and n-sided shapes come free. Add shapes by writing footprints, not new
-  drawing code.
+- **No build step. Single files that open directly in a browser.** The 3D renderer pins
+  three.js r128 from jsDelivr and nothing else; the Canvas 2D renderers load nothing but
+  fonts. Any other dependency needs a reason written down here.
+- **Looks come before rules.** The reference stills (`docs/style-board.html`) are the
+  target. When a rule in this file keeps the city from looking more like them, change
+  the rule, and say so in README. That is how the fixed camera and the no-CDN rule went.
+- **One solid vocabulary per renderer.** Canvas 2D: `prism()` extrudes any convex
+  footprint, add shapes by writing footprints. WebGL: `box()`, `cyl()`, `ball()` and
+  `slab()` over rounded geometry, with `sugar()` for anything pastel. Add shapes by
+  composing those, not by importing models.
 - **Every district is composed by hand. There are no district templates.** A stadium,
   a zócalo and a control yard have nothing structural in common and should not be
   forced through one layout schema. Write each district's footprints for that project.
@@ -80,8 +86,9 @@ views read the same townships and add live cadets on top.
   plane; townships are prop groups placed on it, never tiles carrying their own ground.
 - Borders are physical — a plinth raised a different amount per district, so seams are a
   lit step. Glowing rings are hover/alert state only.
-- A district varies freely in layout, landmark, props and silhouette. Camera, sun, scale
-  rule, material library and shadow treatment are fixed across all of them.
+- A district varies freely in layout, landmark, props and silhouette. Sun, scale rule,
+  material library and shadow treatment are fixed across all of them. The camera is fixed
+  in the Canvas 2D views and orbits freely in the 3D view.
 - Painter's algorithm: objects sorted by `x + z`, shadows gathered in a geometry-only
   pass (`SILENT`) then filled once so they never double-darken.
 

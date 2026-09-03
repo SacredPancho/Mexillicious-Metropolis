@@ -11,6 +11,10 @@ Repo: `SacredPancho/Mexillicious-Metropolis`. Local working copy lives at
 
 ## Open it
 
+- `prototypes/metropolis-3d.html` — **the primary renderer.** WebGL via three.js r128
+  (pinned from jsDelivr, the one external dependency). Drag to orbit, scroll to zoom, tap
+  a district. Bevelled sugar-cube plinths, rounded geometry, soft shadows, a dark mirror
+  floor, bloom, two moons. Night only. Add `?d=16` to start closer in.
 - `prototypes/metropolis.html` — isometric renderer, hex lattice, drag-to-rearrange.
   Standalone: no build, no dependencies, no CDN. Open it in a browser.
 - `prototypes/hero.html` — the public, read-only website hero. Daylight scale-model look,
@@ -44,6 +48,13 @@ ring is hover/alert state only.
 **Themes vary on five knobs, nothing else.** Accent hue, prop kit, layout rule, ground
 tint, cadet behaviour. Camera, sun, scale rule, material library and silhouette grammar
 are fixed across every township. A new project is a config object, not a modelling session.
+
+**The look wins over the rules.** The reference stills need bevelled geometry, soft
+shadows, a reflective floor, bloom and a camera that orbits. The Canvas 2D painter can do
+none of those, so the "no CDN, no three.js" and "camera is fixed" rules were dropped and
+`metropolis-3d.html` was built on three.js. The 2D views stay as the flat fallback and the
+public hero; the 3D view is where the city goes from here. Colours are authored in sRGB
+and converted to linear on the way in, otherwise every pastel renders pale.
 
 **The sky is part of the engine, not a backdrop colour.** Both renderers draw the same
 sky: a horizon computed from the camera, a gradient that blends into a far floor below it,
@@ -142,3 +153,6 @@ reveal unreleased work and competitive research.
   only the primary? Currently primary only, which leaves this repo's own district empty.
 - Add the compound alert rule to the renderer: alert only when
   `status_bucket = REVIEW_READY` AND `connection_status = connected`.
+- Port the hero to the 3D renderer with a day palette, then retire the 2D views.
+- Depth of field and ambient occlusion passes for the 3D view, once it runs on the Mac mini
+  at a steady frame rate.
