@@ -6,10 +6,9 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Archivo:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
 
 <style>
-  /* This prototype breaks the "no CDN" rule on purpose: the reference stills need
-     bevelled geometry, soft shadows, a reflective floor, bloom and a camera that
-     orbits, none of which the Canvas 2D painter can do. three.js r128 is pinned
-     from jsDelivr; everything else is inline. Night only, like the wall display. */
+  /* The primary renderer. three.js r128 is pinned from jsDelivr; models.js carries the
+     Kenney CC0 pieces as data URIs so the file still opens straight from disk. Night
+     only, like the wall display. */
   :root{
     --paper:#0b0918; --ink:#f6f0ff; --ink-2:#bfb0e2; --ink-3:#8d7fb8;
     --card:#16122a; --card-line:#2a2347;
@@ -85,10 +84,17 @@
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/math/SimplexNoise.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/SSAOShader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/SSAOPass.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/BokehShader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/BokehPass.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/geometries/RoundedBoxGeometry.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/objects/Reflector.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/renderers/CSS2DRenderer.js"></script>
+<script src="models.js"></script>
 <script>
 (() => {
   "use strict";
@@ -223,6 +229,34 @@
     g.add(m); return m;
   }
 
+  /* ---------- modelled assets: Kenney CC0 pieces, tinted into the palette ---------- */
+  const SRC = window.MODEL_SRC || {}, MODELS = {}, pastelCache = new Map();
+  function pastel(mat) {
+    if (pastelCache.has(mat)) return pastelCache.get(mat);
+    const m = mat.clone(); m.roughness = .92; m.metalness = 0;
+    m.onBeforeCompile = sh => {
+      sh.fragmentShader = sh.fragmentShader
+        .replace("#include <map_fragment>", "#include <map_fragment>\n\tdiffuseColor.rgb = mix(diffuseColor.rgb, vec3(1.0), 0.34);")
+        .replace("#include <emissivemap_fragment>", "#include <emissivemap_fragment>\n\ttotalEmissiveRadiance += diffuseColor.rgb * 0.14;");
+    };
+    m.customProgramCacheKey = () => "pastel";
+    pastelCache.set(mat, m); return m;
+  }
+  function loadModels() {
+    const loader = new THREE.GLTFLoader();
+    return Promise.all(Object.keys(SRC).map(name => new Promise(res => loader.load(SRC[name], g => { MODELS[name] = g; res(); }, undefined, () => res()))));
+  }
+  // place a model by footprint: s scales the one-unit Kenney tile, ry turns it. Null if missing,
+  // so every call site keeps a procedural fallback.
+  function model(g, name, s, x, z, y, ry = 0) {
+    const src = MODELS[name]; if (!src) return null;
+    const obj = src.scene.clone(true);
+    obj.traverse(o => { if (o.isMesh) { o.material = pastel(o.material); o.castShadow = o.receiveShadow = true; } });
+    obj.scale.setScalar(s); obj.position.set(x, y, z); obj.rotation.y = ry; g.add(obj);
+    contact(g, x, z, y, s * .62);
+    return obj;
+  }
+
   /* ---------- sky ---------- */
   const skyMat = new THREE.ShaderMaterial({
     side: THREE.BackSide, depthWrite: false, fog: false,
@@ -279,16 +313,34 @@
   moonLight.target.position.set(gx, 0, gz); scene.add(moonLight, moonLight.target);
   const fill = new THREE.DirectionalLight(lin(0x8fd4ff), .12); fill.position.set(26, 14, 20); scene.add(fill);
 
-  /* ---------- floor: a dark mirror, dimmed by a shadow-catching veil ---------- */
-  // the mirror only lives under the city: the Reflector shader has no fog, so far away it
-  // would stay bright. Beyond it the floor is plain, fogged and dark. Lambert on purpose:
-  // a low key light puts a specular sheen across any standard material at grazing angles.
-  const far = new THREE.Mesh(new THREE.PlaneGeometry(360, 360), new THREE.MeshLambertMaterial({ color: lin(C.floor) }));
-  far.rotation.x = -Math.PI / 2; far.position.y = -.03; far.receiveShadow = true; scene.add(far);
-  const mirror = new THREE.Reflector(new THREE.PlaneGeometry(110, 110), { clipBias: .003, textureWidth: 1024, textureHeight: 1024, color: 0x555555 });
-  mirror.rotation.x = -Math.PI / 2; mirror.position.y = -.012; mirror.position.set(gx, -.012, gz); mirror.rotation.x = -Math.PI / 2; scene.add(mirror);
-  const veil = new THREE.Mesh(new THREE.PlaneGeometry(110, 110), new THREE.MeshLambertMaterial({ color: lin(C.floor), transparent: true, opacity: .84 }));
-  veil.rotation.x = -Math.PI / 2; veil.position.set(gx, 0, gz); veil.receiveShadow = true; scene.add(veil);
+  /* ---------- ground: uninhabited terrain, flat under the city, faceted hills beyond ---------- */
+  const noise = new THREE.SimplexNoise();
+  const terrainH = (x, z) => {
+    const d = Math.hypot(x - gx, z - gz);
+    const near = THREE.MathUtils.smoothstep(d, 11, 34), farK = THREE.MathUtils.smoothstep(d, 50, 150);
+    return near * (noise.noise(x * .06, z * .06) * 1.6 + noise.noise(x * .18, z * .18) * .45)
+         + farK * (noise.noise(x * .02 + 9, z * .02) * 7 + 5);
+  };
+  (() => {
+    let geo = new THREE.PlaneGeometry(360, 360, 160, 160); geo.rotateX(-Math.PI / 2);
+    const pos = geo.attributes.position;
+    for (let i = 0; i < pos.count; i++) pos.setY(i, terrainH(pos.getX(i), pos.getZ(i)) - .02);
+    geo = geo.toNonIndexed(); geo.computeVertexNormals();   // unshared vertices: every facet its own normal
+    // Lambert on purpose: a low key light puts a specular sheen across a standard material
+    const ground = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ color: lin(0x1c1536) }));
+    ground.receiveShadow = true; scene.add(ground);
+    // rocks: pebbles near the city, outcrops further out
+    const rand = rng(4242);
+    const mats = [new THREE.MeshLambertMaterial({ color: lin(0x3b2f62) }), new THREE.MeshLambertMaterial({ color: lin(0x4a3a78) })];
+    for (let i = 0; i < 110; i++) {
+      const a = rand() * Math.PI * 2, d = 10 + Math.pow(rand(), .7) * 75, x = gx + Math.cos(a) * d, z = gz + Math.sin(a) * d;
+      const big = d > 30 && rand() < .3, r = big ? 1.6 + rand() * 3.6 : .16 + rand() * .7;
+      const m = new THREE.Mesh(new THREE.DodecahedronGeometry(r, big ? 1 : 0), mats[(rand() * 2) | 0]);
+      m.position.set(x, terrainH(x, z) + r * .2, z); m.rotation.set(rand() * 3, rand() * 3, rand() * 3);
+      m.scale.set(1 + rand() * .6, .5 + rand() * .5, 1 + rand() * .6);
+      m.castShadow = m.receiveShadow = true; scene.add(m);
+    }
+  })();
 
   /* ---------- cadets, walking deterministic routes like the 2D views ---------- */
   function rng(seed) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
@@ -333,6 +385,24 @@
 
   const cadets = [];
   function cadet(accent, alert) {
+    const src = MODELS.character;
+    if (!src) return cadetProcedural(accent, alert);
+    const g = new THREE.Group(), body = src.scene.clone(true);
+    body.traverse(o => { if (o.isMesh) { o.material = pastel(o.material); o.castShadow = o.receiveShadow = true; } });
+    body.scale.setScalar(.6); g.add(body);
+    const mixer = new THREE.AnimationMixer(body), clips = {};
+    src.animations.forEach(a => { clips[a.name] = mixer.clipAction(a); });
+    if (clips.idle) clips.idle.play();
+    if (clips.walk) { clips.walk.play(); clips.walk.setEffectiveWeight(0); }
+    if (alert) {
+      const face = new THREE.Sprite(new THREE.SpriteMaterial({ map: haloTex, color: lin(accent), transparent: true, opacity: .9, depthWrite: false, blending: THREE.AdditiveBlending }));
+      face.scale.set(.5, .5, 1); face.position.set(0, .5, -.22); g.add(face); g.userData.face = face;
+    }
+    contact(g, 0, 0, 0, .3);
+    g.userData.mixer = mixer; g.userData.clips = clips;
+    return g;
+  }
+  function cadetProcedural(accent, alert) {
     const g = new THREE.Group();
     const suit = matte(C.suit, .7), suit2 = matte(C.suit2, .7), navy = matte(C.navy), trim = sugar(C.orange, .25);
     const legs = [-1, 1].map(s => {
@@ -368,14 +438,22 @@
       cadets.push({ g: c, seed: seedOf(p.name) + i * 977, cx, cz, spread, obst, y });
     }
   }
-  function placeCadet(w, t) {
+  function placeCadet(w, t, dt) {
     const r = walkRoute(w.seed, t, w.cx, w.cz, w.spread, w.obst);
     const g = w.g;
-    g.position.set(r.x, w.y + (r.moving ? Math.abs(Math.sin(r.gait)) * .014 : 0), r.z);
-    g.rotation.y = -r.head;
-    const sw = r.moving ? Math.sin(r.gait) * .5 : 0;
-    g.userData.legs[0].rotation.z = sw; g.userData.legs[1].rotation.z = -sw;
-    g.userData.arms[0].rotation.z = -sw * .7; g.userData.arms[1].rotation.z = sw * .7;
+    if (g.userData.mixer) {                              // the Kenney character faces -z at rest
+      g.position.set(r.x, w.y, r.z); g.rotation.y = -r.head - Math.PI / 2;
+      const c = g.userData.clips;
+      if (c.walk) c.walk.setEffectiveWeight(r.moving ? 1 : 0);
+      if (c.idle) c.idle.setEffectiveWeight(r.moving ? 0 : 1);
+      g.userData.mixer.update(reduced ? 0 : dt);
+    } else {
+      g.position.set(r.x, w.y + (r.moving ? Math.abs(Math.sin(r.gait)) * .014 : 0), r.z);
+      g.rotation.y = -r.head;
+      const sw = r.moving ? Math.sin(r.gait) * .5 : 0;
+      g.userData.legs[0].rotation.z = sw; g.userData.legs[1].rotation.z = -sw;
+      g.userData.arms[0].rotation.z = -sw * .7; g.userData.arms[1].rotation.z = sw * .7;
+    }
     if (g.userData.face) g.userData.face.material.opacity = reduced ? .8 : .5 + .5 * (1 + Math.sin(t * 3.1)) / 2;
   }
 
@@ -421,16 +499,18 @@
       for (let i = 0; i < 4; i++) {
         const a = i * Math.PI / 2 - .5, rr = 2.05 + rand() * .18, bx = Math.cos(a) * rr, bz = Math.sin(a) * rr;
         const w = .9 + rand() * .35, h = .72 + rand() * .5;
-        box(g, w, h, .8, bx, bz, y + .05, sugar(C.walls[i % 5], .3), -a, .09);
-        box(g, w + .16, .07, .96, bx, bz, y + .05 + h, i % 2 ? acc : matte(C.roof), -a, .03);
-        for (let k = 0; k < 3; k++) {                      // windows on the face toward the plaza
-          const u = (k - 1) * w * .3;
-          const win = mesh(rbox(.11, .14, .03, .01), sugar(0xfff3d0, .9, .6), 0, 0, 0);
-          win.position.set(bx - Math.cos(a) * .41 + Math.sin(a) * u, y + .05 + h * .55, bz - Math.sin(a) * .41 - Math.cos(a) * u);
-          win.rotation.y = -a; g.add(win);
+        if (!model(g, ["building-small-a", "building-small-b", "building-small-d", "building-small-c"][i], .95, bx, bz, y + .05, -a - Math.PI / 2)) {
+          box(g, w, h, .8, bx, bz, y + .05, sugar(C.walls[i % 5], .3), -a, .09);
+          box(g, w + .16, .07, .96, bx, bz, y + .05 + h, i % 2 ? acc : matte(C.roof), -a, .03);
+          for (let k = 0; k < 3; k++) {                    // windows on the face toward the plaza
+            const u = (k - 1) * w * .3;
+            const win = mesh(rbox(.11, .14, .03, .01), sugar(0xfff3d0, .9, .6), 0, 0, 0);
+            win.position.set(bx - Math.cos(a) * .41 + Math.sin(a) * u, y + .05 + h * .55, bz - Math.sin(a) * .41 - Math.cos(a) * u);
+            win.rotation.y = -a; g.add(win);
+          }
         }
       }
-      [[-1.55, 1.5], [1.7, 1.35], [-1.75, -1.15]].forEach(o => tree(g, o[0], o[1], y + .05, .95));
+      [[-1.55, 1.5], [1.7, 1.35], [-1.75, -1.15]].forEach((o, k) => { if (!model(g, k ? "grass-trees" : "grass-trees-tall", .8, o[0], o[1], y + .05, k * 1.3)) tree(g, o[0], o[1], y + .05, .95); });
       // broadcast mast: the app publishes outward
       cyl(g, .05, .07, 1.7, 1.55, -1.6, y + .05, matte(C.trim), 8);
       cyl(g, .34, .34, .08, 1.55, -1.6, y + 1.75, acc, 6);
@@ -471,7 +551,8 @@
       const tx = 1.0, tz = 1.62;                            // training field, kept small so the bowl leads
       box(g, 1.5, .03, .95, tx, tz, y, sugar(C.grassDark, .18, .95), -.3, 0);
       [-1, 1].forEach(s => box(g, .05, .22, .34, tx + Math.cos(.3) * s * .66, tz + Math.sin(.3) * s * .66, y + .03, lineMat, -.3, .01));
-      const ob = [{ x: sx, z: sz, r: 2.0 }, { x: tx, z: tz, r: 1.0 }];
+      model(g, "pavement-fountain", .8, -2.0, 1.45, y, .4);
+      const ob = [{ x: sx, z: sz, r: 2.0 }, { x: tx, z: tz, r: 1.0 }, { x: -2.0, z: 1.45, r: .5 }];
       [[-.78, -.78], [.78, -.78], [-.78, .78], [.78, .78]].forEach(o => ob.push({ x: sx + o[0] * (A + DEPTH), z: sz + o[1] * (B + DEPTH), r: .26 }));
       walkers(p, 0, 0, y + .02, g, 3, 2.3, ob);
     },
@@ -489,6 +570,7 @@
       const dish = box(g, .74, .3, .16, dx, dz, y + .99, sugar(p.accent, .45), 0, .05);
       g.userData.dish = dish;
       [[-.15, 1.15, 1.5, .8], [1.15, .75, 1.0, .55]].forEach((s, i) => {
+        if (model(g, "building-garage", i ? .95 : 1.3, s[0], s[1], y + .04, -.25 + (i ? Math.PI : 0))) return;
         box(g, s[2], .55, s[3], s[0], s[1], y + .04, sugar(C.walls[i ? 0 : 4], .3), -.25, .08);
         [-.3, 0, .3].forEach(o => box(g, .16, .09, .3, s[0] + o * .8, s[1] + o * .2, y + .59, matte(C.trim), -.25, .02));
       });
@@ -519,7 +601,8 @@
       const s1 = ball(g, .26, 1.5, y + .26, -.35, sugar(0xd8d0e8, .1, .95)); s1.scale.set(1, .8, .9);
       const s2 = ball(g, .22, 1.45, y + .62, -.3, sugar(0xd8d0e8, .1, .95)); s2.scale.set(1, .8, .9);
       lamp(g, -1.85, -.4, y + .05, p.accent);
-      const ob = [{ x: bx, z: bz, r: 1.18 }, { x: ox, z: oz, r: .58 }, { x: -1.4, z: .62, r: 1.12 }, { x: 1.42, z: .95, r: .95 }, { x: 1.5, z: -.35, r: .45 }, { x: -.62, z: .62, r: .38 }, { x: .1, z: .74, r: .38 }];
+      model(g, "grass-trees", .7, -1.0, -1.55, y + .05, .6);
+      const ob = [{ x: bx, z: bz, r: 1.18 }, { x: ox, z: oz, r: .58 }, { x: -1.0, z: -1.55, r: .45 }, { x: -1.4, z: .62, r: 1.12 }, { x: 1.42, z: .95, r: .95 }, { x: 1.5, z: -.35, r: .45 }, { x: -.62, z: .62, r: .38 }, { x: .1, z: .74, r: .38 }];
       walkers(p, 0, 0, y + .05, g, 3, 2.2, ob);
     },
 
@@ -533,9 +616,10 @@
 
   /* ---------- districts: each one a sugar-cube plinth with its kit on top ---------- */
   const plinths = [], districts = [];
-  const PLINTH_H = [1.05, .8, 1.25, .9];
-  PROJECTS.forEach((p, i) => {
-    const c = hexCentre(p.q, p.r), h = PLINTH_H[i % PLINTH_H.length], bevel = .16;
+  // thin slabs, not blocks: the step between neighbours is the border, nothing more
+  const PLINTH_H = [.16, .22, .12, .19];
+  function buildCity() { PROJECTS.forEach((p, i) => {
+    const c = hexCentre(p.q, p.r), h = PLINTH_H[i % PLINTH_H.length], bevel = .05;
     const g = new THREE.Group(); g.position.set(c.x, 0, c.z); scene.add(g);
     const base = slab(g, hexShape(R * .97 - bevel), h - bevel, bevel, sugar(p.accent, .22, .95), -bevel);
     base.userData.project = p; plinths.push(base);
@@ -558,7 +642,7 @@
     const vx = c.x - gx, vz = c.z - gz, vm = Math.hypot(vx, vz) || 1;
     lbl.position.set(vx / vm * R * 1.35, h + .3, vz / vm * R * 1.35); g.add(lbl);
     districts.push({ p, g, rim, h });
-  });
+  }); }
 
   /* ---------- sparkle dust ---------- */
   const dust = (() => {
@@ -589,8 +673,21 @@
   const labels = new THREE.CSS2DRenderer();
   labels.domElement.style.position = "absolute"; labels.domElement.style.top = "0"; labels.domElement.style.pointerEvents = "none";
   document.getElementById("labels").appendChild(labels.domElement);
+  // ambient occlusion darkens every crease and contact; depth of field keeps the eye
+  // on the city and turns the far floor and sky into the soft blur of the stills.
+  // ?ao=0 or ?dof=0 switches either off for comparison.
   const composer = new THREE.EffectComposer(renderer);
-  composer.addPass(new THREE.RenderPass(scene, camera));
+  const useAO = Q.get("ao") !== "0", useDOF = Q.get("dof") !== "0";
+  let ssao = null, dof = null;
+  if (useAO) {
+    ssao = new THREE.SSAOPass(scene, camera, 1, 1);
+    ssao.kernelRadius = .55; ssao.minDistance = .0003; ssao.maxDistance = .01;
+    composer.addPass(ssao);
+  } else composer.addPass(new THREE.RenderPass(scene, camera));
+  if (useDOF) {
+    dof = new THREE.BokehPass(scene, camera, { focus: 26, aperture: .00026, maxblur: .007, width: 1, height: 1 });
+    composer.addPass(dof);
+  }
   const bloom = new THREE.UnrealBloomPass(new THREE.Vector2(1, 1), .5, .5, .74);
   composer.addPass(bloom);
 
@@ -598,6 +695,8 @@
     const r = hero.getBoundingClientRect(), w = Math.max(1, r.width), h = Math.max(1, r.height);
     renderer.setSize(w, h, false); cv.style.width = w + "px"; cv.style.height = h + "px";
     composer.setSize(w, h); bloom.setSize(w, h); labels.setSize(w, h);
+    if (ssao) ssao.setSize(w, h);
+    if (dof) { dof.renderTargetDepth.setSize(w, h); dof.uniforms.aspect.value = w / h; }
     camera.aspect = w / h; camera.updateProjectionMatrix();
   }
   new ResizeObserver(resize).observe(hero); resize();
@@ -640,10 +739,12 @@
 
   /* ---------- frame loop ---------- */
   const clock = new THREE.Clock();
+  let lastT = 0;
   function frame() {
-    const t = reduced ? 0 : clock.getElapsedTime();
+    const t = reduced ? 0 : clock.getElapsedTime(), dt = Math.min(.1, t - lastT); lastT = t;
     controls.update();
-    cadets.forEach(w => placeCadet(w, t));
+    if (dof) dof.uniforms.focus.value = camera.position.distanceTo(controls.target);
+    cadets.forEach(w => placeCadet(w, t, dt));
     districts.forEach(d => {
       const lit = (hover && hover.name === d.p.name) || (selected && selected.name === d.p.name);
       d.rim.material.opacity += ((lit ? .9 : 0) - d.rim.material.opacity) * .15;
@@ -660,7 +761,10 @@
     labels.render(scene, camera);
     if (!reduced) requestAnimationFrame(frame);
   }
-  frame();
-  if (reduced) { controls.addEventListener("change", frame); new ResizeObserver(frame).observe(hero); }
+  loadModels().then(() => {
+    buildCity();
+    frame();
+    if (reduced) { controls.addEventListener("change", frame); new ResizeObserver(frame).observe(hero); }
+  });
 })();
 </script>

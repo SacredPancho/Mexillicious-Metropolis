@@ -10,7 +10,10 @@ Repo: `SacredPancho/Mexillicious-Metropolis`
 ## Layout
 
 - `prototypes/metropolis-3d.html` — the primary renderer. WebGL (three.js), orbit camera,
-  bevelled sugar-cube districts, soft shadows, mirror floor, bloom. Night only.
+  thin bevelled districts on faceted terrain, Kenney CC0 models, soft shadows, SSAO, depth
+  of field, bloom. Night only.
+- `prototypes/models/` + `prototypes/models.js` — CC0 models and their packed data URIs.
+  `tools/pack-models.py` regenerates the pack.
 - `prototypes/hero.html` — public, read-only website hero. Canvas 2D, fixed isometric camera.
 - `prototypes/metropolis.html` — private wall/control view in Canvas 2D. Kept as the flat fallback.
 - `docs/data-model.html` — session feed → township/cadet field mapping.
@@ -70,7 +73,10 @@ views read the same townships and add live cadets on top.
 - **One solid vocabulary per renderer.** Canvas 2D: `prism()` extrudes any convex
   footprint, add shapes by writing footprints. WebGL: `box()`, `cyl()`, `ball()` and
   `slab()` over rounded geometry, with `sugar()` for anything pastel. Add shapes by
-  composing those, not by importing models.
+  composing those, or by placing a CC0 model through `model()` with a procedural
+  fallback. Models must be CC0 and chibi in register; nothing photoreal, nothing that
+  needs attribution.
+- **The ground is terrain, never water. Plinths are thin slabs, never blocks.**
 - **Every district is composed by hand. There are no district templates.** A stadium,
   a zócalo and a control yard have nothing structural in common and should not be
   forced through one layout schema. Write each district's footprints for that project.

@@ -115,10 +115,10 @@
 
   <section id="three-d">
     <h2>The 3D view</h2>
-    <p class="sub">Built on three.js because the stills need what a flat painter cannot give: bevelled sugar-cube plinths, rounded geometry, soft shadows, a dark mirror floor, bloom, and a camera you can drag around the city. Every colour goes in as linear light, which is what keeps the pastels saturated instead of pale.</p>
-    <figure class="shot lead"><img src="refs/metropolis-3d.jpg" alt="The WebGL city: four bevelled pastel plinths on a dark mirror floor under a pink moon, cadets walking between rounded buildings"><figcaption><b>WebGL</b><span>drag to orbit, scroll to zoom, tap a district</span></figcaption></figure>
+    <p class="sub">Built on three.js because the stills need what a flat painter cannot give: modelled chibi buildings and characters, thin bevelled plinths on faceted terrain, raked soft shadows with contact darkening, ambient occlusion, depth of field, bloom, and a camera you can drag around the city. Every colour goes in as linear light, which is what keeps the pastels saturated instead of pale.</p>
+    <figure class="shot lead"><img src="refs/metropolis-3d.jpg" alt="The WebGL city: four thin pastel hex slabs on dark faceted terrain with low mountains behind, under a pink moon, chibi robots walking between toy buildings"><figcaption><b>WebGL</b><span>drag to orbit, scroll to zoom, tap a district</span></figcaption></figure>
     <div class="pair" style="margin-top:14px">
-      <figure class="shot"><img src="refs/metropolis-3d-close.jpg" alt="Close orbit of the panadería and control-yard districts, showing rounded edges, soft shadows and the reflection in the floor"><figcaption><b>Close</b><span>rounded edges, soft shadows, reflection</span></figcaption></figure>
+      <figure class="shot"><img src="refs/metropolis-3d-close.jpg" alt="Close orbit of the panadería and control-yard districts, showing Kenney buildings tinted pastel, rounded edges and long soft shadows"><figcaption><b>Close</b><span>modelled pieces, long soft shadows, contact darkening</span></figcaption></figure>
       <figure class="shot"><img src="refs/metropolis-3d-phone.jpg" alt="The same scene at phone width" style="aspect-ratio:16/10;object-position:center 40%"><figcaption><b>Phone</b><span>starts further out on narrow screens</span></figcaption></figure>
     </div>
   </section>
@@ -190,9 +190,13 @@
     <dl class="rules">
       <div><dt>Sugar</dt><dd>One material for everything pastel: the accent as colour and as emissive at about a quarter strength, roughness above 0.9, a fine noise bump. <code>sugar(colour, emit, rough)</code> in the file.<span class="why">Emissive plus bloom is what reads as lit from within.</span></dd></div>
       <div><dt>Edges</dt><dd>No sharp box anywhere. Buildings use rounded boxes; plinths and stadium stands are extruded shapes with a bevel. The bevel is what catches the moonlight on every top edge.</dd></div>
-      <div><dt>Plinths</dt><dd>Each district is a bevelled hex slab in its own accent, raised a different amount, with its colour pooled on the floor beneath and a point light above.</dd></div>
-      <div><dt>Floor</dt><dd>A mirror under the city, dimmed by a dark veil that catches shadows, then plain fogged floor out to the horizon. The mirror is small on purpose: the reflector shader has no fog.</dd></div>
-      <div><dt>Light</dt><dd>A pink moon key light with soft shadows, an ice fill from the other side, a low lilac hemisphere. Kept low so pastels stay pastel under tone mapping.</dd></div>
+      <div><dt>Plinths</dt><dd>Each district is a thin bevelled hex slab in its own accent, 12 to 22 hundredths high so the step between neighbours is a border and nothing more, with its colour pooled on the ground beneath and a point light above.</dd></div>
+      <div><dt>Ground</dt><dd>Uninhabited terrain, never water. Flat for eleven units around the city, then faceted low-poly hills from simplex noise, mountains from fifty units out, pebbles near and dodecahedron outcrops far. Lambert, because a standard material shows a sheen under the low moon.</dd></div>
+      <div><dt>Models</dt><dd>Kenney's CC0 city and platformer pieces, packed into <code>models.js</code> by <code>tools/pack-models.py</code> so the file still opens from disk. Every model is tinted in the shader, a third of the way to white with a little self-glow, so saturated kit colours sit in the palette. Every call site keeps a procedural fallback.</dd></div>
+      <div><dt>Cadets</dt><dd>Kenney's robot at 60% scale, driving its own idle and walk clips along the same deterministic routes as the 2D views. The alert face is still a sprite over the visor.</dd></div>
+      <div><dt>Shadows</dt><dd>The moon rakes in from the left at about thirty degrees so every block throws a long shadow; VSM shadow map, blur radius 6. A multiply contact blob under every block, cylinder, model and cadet does the rest.</dd></div>
+      <div><dt>Passes</dt><dd>SSAO for creases, then a bokeh depth-of-field pass focused on the orbit target, then bloom. <code>?ao=0</code> and <code>?dof=0</code> switch them off for comparison.</dd></div>
+      <div><dt>Light</dt><dd>A pink moon key light, an ice fill from the other side, a low lilac hemisphere. Emissive on pastel surfaces is kept low so shadows are not filled in; bloom carries the glow.</dd></div>
       <div><dt>Colour</dt><dd>Hex values are sRGB and are converted to linear on the way in. Skip that and the whole city renders washed out.</dd></div>
       <div><dt>Camera</dt><dd>Orbit with damping, no pan, distance 11 to 48, polar angle 26° to 83°. Slow auto-rotate unless reduced motion is on.</dd></div>
     </dl>
@@ -205,7 +209,7 @@
       <div><b>District kits</b>Every zócalo, stadium, control yard and panadería is still hand-composed from footprints. No cubes replaced buildings.</div>
       <div><b>Plinths and seams</b>Borders stay physical. The only new thing under a district is its light pool.</div>
       <div><b>Sun and scale</b>Unchanged. The 2D horizon is computed from the camera, not the other way round.</div>
-      <div><b>One dependency</b>The 3D view pins three.js r128 from jsDelivr. The 2D views still load nothing but fonts.</div>
+      <div><b>One dependency</b>The 3D view pins three.js r128 from jsDelivr, plus CC0 models packed into the repo. The 2D views still load nothing but fonts.</div>
       <div><b>Cadets</b>Same suits, same walks, same faces when a district needs you.</div>
       <div><b>Bloom and grain</b>The composite pass is the same. The sky just gives it more to bloom.</div>
     </div>
